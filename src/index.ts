@@ -170,11 +170,11 @@ async function handleWorkspace(
       break
 
     case "existing-repo":
-      await handleExistingRepo(workspace, config, args)
+      await handleExistingRepo(workspace, args)
       break
 
     case "empty":
-      await handleEmptyDirectory(workspace, config, args)
+      await handleEmptyDirectory(workspace, args)
       break
   }
 }
@@ -217,7 +217,6 @@ async function handleExistingProject(
  */
 async function handleExistingRepo(
   workspace: WorkspaceResult,
-  config: GlobalConfig,
   args: CLIArgs
 ): Promise<void> {
   // If we don't have a repo name, we can't run the wizard
@@ -245,15 +244,25 @@ async function handleExistingRepo(
   }
 
   // Wizard completed successfully - show summary
-  logger.info("")
-  logConfigSummary(config)
+  const updatedConfig = await loadConfig({
+    backend: args.backend as AIBackend | undefined,
+    maxSessions: args.maxSessions,
+    debug: args.debug,
+  })
 
   logger.info("")
-  logger.info("OpenSWE initialized (Phase 4 - wizard complete)")
+  logConfigSummary(updatedConfig)
   logger.info("")
-  logger.info("Next steps:")
-  logger.info("  - Phase 5: Database layer")
-  logger.info("  - Phase 6+: TUI implementation")
+  logger.info("OpenSWE initialized (Phase 4 - wizard complete)")
+  logger.info("Launching TUI...")
+
+  await handleExistingProject(
+    {
+      type: "existing-project",
+      projectRoot: workspace.projectRoot,
+    },
+    updatedConfig
+  )
 }
 
 /**
@@ -261,7 +270,6 @@ async function handleExistingRepo(
  */
 async function handleEmptyDirectory(
   workspace: WorkspaceResult,
-  config: GlobalConfig,
   args: CLIArgs
 ): Promise<void> {
   // Run the empty directory wizard
@@ -278,15 +286,25 @@ async function handleEmptyDirectory(
   }
 
   // Wizard completed successfully - show summary
-  logger.info("")
-  logConfigSummary(config)
+  const updatedConfig = await loadConfig({
+    backend: args.backend as AIBackend | undefined,
+    maxSessions: args.maxSessions,
+    debug: args.debug,
+  })
 
   logger.info("")
-  logger.info("OpenSWE initialized (Phase 4 - wizard complete)")
+  logConfigSummary(updatedConfig)
   logger.info("")
-  logger.info("Next steps:")
-  logger.info("  - Phase 5: Database layer")
-  logger.info("  - Phase 6+: TUI implementation")
+  logger.info("OpenSWE initialized (Phase 4 - wizard complete)")
+  logger.info("Launching TUI...")
+
+  await handleExistingProject(
+    {
+      type: "existing-project",
+      projectRoot: workspace.projectRoot,
+    },
+    updatedConfig
+  )
 }
 
 // ============================================================================

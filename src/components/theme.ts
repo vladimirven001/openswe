@@ -2,63 +2,77 @@
  * Theme configuration for OpenSWE TUI
  *
  * Defines colors, border styles, and layout constants
+ * Colors are derived from the theme system for consistency
  */
 
 import type { Status } from "../store"
+import type { ResolvedTheme } from "../theme/types"
+import { getDefaultTheme } from "../theme/context"
 
 // ============================================================================
-// Color Palette
+// Color Palette - Derived from Theme System
 // ============================================================================
 
-export const colors = {
-  // Background colors
-  bg: {
-    primary: "#1a1a2e",
-    secondary: "#16213e",
-    card: "#1f2937",
-    cardSelected: "#374151",
-  },
+/**
+ * Create colors object from a resolved theme
+ * This allows components to use either the reactive theme or static defaults
+ */
+export function createColors(theme: ResolvedTheme) {
+  return {
+    // Background colors
+    bg: {
+      primary: theme.background,
+      secondary: theme.backgroundPanel,
+      card: theme.backgroundElement,
+      cardSelected: theme.borderSubtle,
+    },
 
-  // Text colors
-  text: {
-    primary: "#e5e7eb",
-    secondary: "#9ca3af",
-    muted: "#6b7280",
-    inverse: "#1a1a2e",
-  },
+    // Text colors
+    text: {
+      primary: theme.text,
+      secondary: theme.textMuted,
+      muted: theme.borderSubtle,
+      inverse: theme.background,
+    },
 
-  // Status colors
-  status: {
-    active: "#22c55e", // green
-    queued: "#6b7280", // gray
-    needs_attention: "#eab308", // yellow
-    completed: "#22c55e", // green
-    paused: "#3b82f6", // blue
-    failed: "#ef4444", // red
-  } as Record<Status, string>,
+    // Status colors (semantic colors)
+    status: {
+      active: theme.success,
+      queued: theme.borderSubtle,
+      needs_attention: theme.warning,
+      completed: theme.success,
+      paused: theme.info,
+      failed: theme.error,
+    } as Record<Status, string>,
 
-  // Border colors
-  border: {
-    primary: "#374151",
-    secondary: "#4b5563",
-    accent: "#3b82f6",
-  },
+    // Border colors
+    border: {
+      primary: theme.border,
+      secondary: theme.borderSubtle,
+      accent: theme.accent,
+    },
 
-  // Progress bar colors
-  progress: {
-    filled: "#3b82f6",
-    empty: "#374151",
-    text: "#60a5fa",
-  },
+    // Progress bar colors
+    progress: {
+      filled: theme.primary,
+      empty: theme.backgroundElement,
+      text: theme.accent,
+    },
 
-  // Accent colors
-  accent: {
-    primary: "#3b82f6", // blue
-    success: "#22c55e", // green
-    warning: "#eab308", // yellow
-    error: "#ef4444", // red
-  },
+    // Accent colors
+    accent: {
+      primary: theme.primary,
+      secondary: theme.secondary,
+      success: theme.success,
+      warning: theme.warning,
+      error: theme.error,
+      info: theme.info,
+    },
+  }
 }
+
+/** Default colors using the default theme (tokyonight) */
+export const colors = createColors(getDefaultTheme())
 
 // ============================================================================
 // Border Styles
@@ -141,14 +155,40 @@ export const typography = {
 }
 
 // ============================================================================
+// Modal Dimensions
+// ============================================================================
+
+export const modals = {
+  issueSelector: {
+    width: 70,
+    height: 24,
+  },
+  taskQueue: {
+    width: 70,
+    height: 22,
+  },
+  help: {
+    width: 44,
+    height: 24,
+  },
+  confirm: {
+    width: 45,
+  },
+  manualSession: {
+    width: 50,
+  },
+}
+
+// ============================================================================
 // Keybinding Display
 // ============================================================================
 
 export const keybindings = {
   navigate: "j/k or ↑/↓",
+  newSession: "n",
+  issues: "i",
   select: "Enter",
   tasks: "t",
-  issues: "i",
   help: "?",
   quit: "q",
 }

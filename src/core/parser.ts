@@ -18,9 +18,9 @@ export interface ParsedEvent {
   line: string
 }
 
-const PHASE_REGEX = /\[OPENSWE:PHASE:([\w-]+)\]/
-const DONE_REGEX = /\[OPENSWE:DONE\]/
-const BLOCKER_REGEX = /\[OPENSWE:BLOCKER:([^\]]+)\]/
+const PHASE_REGEX = /\[?OPENSWE:PHASE:([\w-]+)\]?/i
+const DONE_REGEX = /\[?OPENSWE:DONE\]?/i
+const BLOCKER_REGEX = /\[?OPENSWE:BLOCKER:([^\]]+?)\]?/i
 
 const QUESTION_PREFIX_REGEX = /^\s*(Question:|Q:)\s*/i
 const PERMISSION_PREFIX_REGEX = /^\s*(Permission:|Perm:)\s*/i

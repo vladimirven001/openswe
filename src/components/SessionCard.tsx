@@ -45,9 +45,10 @@ export function SessionCard(props: SessionCardProps) {
       }
       borderStyle={props.isSelected ? "rounded" : "single"}
       borderColor={props.isSelected ? colors.accent.primary : colors.border.primary}
+      overflow="hidden"
     >
       {/* Line 1: Status icon + name */}
-      <box flexDirection="row" gap={1}>
+      <box flexDirection="row" gap={1} overflow="hidden">
         <text fg={statusColor()} attributes={BOLD}>
           {statusIcon()}
         </text>
@@ -57,8 +58,10 @@ export function SessionCard(props: SessionCardProps) {
       </box>
 
       {/* Line 2: Issue # + phase */}
-      <box flexDirection="row" gap={1} justifyContent="space-between">
-        <text fg={colors.text.secondary}>{issueLabel()}</text>
+      <box flexDirection="row" gap={1} justifyContent="space-between" overflow="hidden">
+        <box width={10}>
+          <text fg={colors.text.secondary}>{issueLabel()}</text>
+        </box>
         <PhaseProgress phase={props.session.phase} variant="inline" />
       </box>
 

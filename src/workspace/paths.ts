@@ -72,6 +72,16 @@ export function getWorktreePath(projectRoot: string, name: string | number): str
   return join(projectRoot, WORKTREES_DIR, sanitized)
 }
 
+
+/**
+ * Resolve the log file path for a session
+ * @param projectRoot - Absolute path to the project root
+ * @param sessionId - Session UUID
+ */
+export function getSessionLogPath(projectRoot: string, sessionId: string): string {
+  return join(getLogsDir(projectRoot), `${sessionId}.log`)
+}
+
 // ============================================================================
 // Naming Utilities
 // ============================================================================

@@ -9,15 +9,17 @@
  */
 
 import { createSignal, createEffect, onMount, onCleanup, Show } from "solid-js"
-import { useKeyboard } from "@opentui/solid"
+import { useKeyboard, useRenderer } from "@opentui/solid"
 import type { Session } from "../store"
 import {
   getAllSessions,
   getUnresolvedTaskCount,
   getProject,
-  getAllLines,
   updateSessionStatus,
+  getSession,
 } from "../store"
+import { getRecentActivities } from "../store/activities"
+import type { ActivityEvent } from "./types"
 import { SessionManager } from "../core"
 import { generateSWEPrompt } from "../prompts"
 import type { AppProps, ModalType, ProjectInfo, PendingAction } from "./types"
@@ -28,14 +30,17 @@ import { HelpModal } from "./HelpModal"
 import { ConfirmDialog } from "./ConfirmDialog"
 import { IssueSelectorModal } from "./IssueSelectorModal"
 import { TaskQueueModal } from "./TaskQueueModal"
+import { ManualSessionModal } from "./ManualSessionModal"
 import { deleteSessionWithWorktree } from "./session-utils"
 import { colors } from "./theme"
+import { logger } from "../utils/logger"
 
-/** Refresh interval for polling data (5 seconds) */
-const REFRESH_INTERVAL = 5000
+/** Refresh interval for polling data (1 second) */
+const REFRESH_INTERVAL = 1000
 
 export function App(props: AppProps) {
-  const sessionManager = new SessionManager(props.config)
+  const sessionManager = new SessionManager(props.config, props.projectRoot)
+  const renderer = useRenderer()
 
   // ============================================================================
   // State
@@ -45,10 +50,10 @@ export function App(props: AppProps) {
   const [selectedIndex, setSelectedIndex] = createSignal(0)
   const [unresolvedTaskCount, setUnresolvedTaskCount] = createSignal(0)
   const [projectInfo, setProjectInfo] = createSignal<ProjectInfo | null>(null)
-  const [previewLines, setPreviewLines] = createSignal<string[]>([])
+  const [previewActivities, setPreviewActivities] = createSignal<ActivityEvent[]>([])
+  const [sessionStartedAt, setSessionStartedAt] = createSignal<Date | undefined>(undefined)
   const [activeModal, setActiveModal] = createSignal<ModalType>("none")
   const [pendingAction, setPendingAction] = createSignal<PendingAction | null>(null)
-  let stopLiveListener: (() => void) | null = null
 
   // ============================================================================
   // Derived State
@@ -102,18 +107,22 @@ export function App(props: AppProps) {
           repoUrl: project.repoUrl,
           maxActiveSessions: project.maxActiveSessions,
         })
+        logger.debug("Loaded project info", project)
+      } else {
+        logger.warn("Project info missing from database")
       }
     } catch {
       setProjectInfo(null)
+      logger.warn("Failed to load project info")
     }
   }
 
-  const loadPreviewLines = (sessionId: string) => {
+  const loadPreviewActivities = (sessionId: string) => {
     try {
-      const lines = getAllLines(sessionId)
-      setPreviewLines(lines)
+      const activities = getRecentActivities(sessionId, 20)
+      setPreviewActivities(activities)
     } catch {
-      setPreviewLines([])
+      setPreviewActivities([])
     }
   }
 
@@ -130,42 +139,40 @@ export function App(props: AppProps) {
     loadTaskCount()
     loadProjectInfo()
 
-    // Set up periodic refresh
-    const intervalId = setInterval(() => {
+    // Set up periodic refresh for dashboard data
+    const refreshId = setInterval(() => {
       loadSessions()
       loadTaskCount()
     }, REFRESH_INTERVAL)
 
-    onCleanup(() => clearInterval(intervalId))
+    // Set up faster refresh for preview activities
+    const previewId = setInterval(() => {
+      const session = selectedSession()
+      if (session && session.status === "active") {
+        loadPreviewActivities(session.id)
+      }
+    }, 1000)
+
+    onCleanup(() => {
+      clearInterval(refreshId)
+      clearInterval(previewId)
+    })
   })
 
-  // Load preview lines when selection changes
+  // Load preview activities when selection changes
   createEffect(() => {
     const session = selectedSession()
     if (session) {
-      if (stopLiveListener) {
-        stopLiveListener()
-        stopLiveListener = null
-      }
-
-      const ptySession = sessionManager.takeoverSession(session.id)
-      if (session.status === "active" && ptySession) {
-        setPreviewLines(ptySession.buffer.getLines())
-        stopLiveListener = ptySession.buffer.onLine(() => {
-          setPreviewLines(ptySession.buffer.getLines())
-        })
+      loadPreviewActivities(session.id)
+      // Track session start time for duration display
+      if (session.status === "active" && session.createdAt) {
+        setSessionStartedAt(new Date(session.createdAt))
       } else {
-        loadPreviewLines(session.id)
+        setSessionStartedAt(undefined)
       }
     } else {
-      setPreviewLines([])
-    }
-  })
-
-  onCleanup(() => {
-    if (stopLiveListener) {
-      stopLiveListener()
-      stopLiveListener = null
+      setPreviewActivities([])
+      setSessionStartedAt(undefined)
     }
   })
 
@@ -177,27 +184,29 @@ export function App(props: AppProps) {
     const modal = activeModal()
 
     // Handle modal-specific keys
-    if (modal !== "none") {
+    if (modal === "confirm-delete") {
       switch (event.name) {
         case "escape":
           setPendingAction(null)
           setActiveModal("none")
           break
 
-        case "return":
-          // Confirm action for confirm-delete modal
-          if (modal === "confirm-delete") {
-            const action = pendingAction()
-            if (action && action.type === "delete") {
-              deleteSessionWithWorktree(props.projectRoot, action.sessionId).then(() => {
-                setPendingAction(null)
-                setActiveModal("none")
-                loadSessions()
-              })
-            }
+        case "return": {
+          const action = pendingAction()
+          if (action && action.type === "delete") {
+            deleteSessionWithWorktree(props.projectRoot, action.sessionId).then(() => {
+              setPendingAction(null)
+              setActiveModal("none")
+              loadSessions()
+            })
           }
           break
+        }
       }
+      return
+    }
+
+    if (modal !== "none") {
       return
     }
 
@@ -223,8 +232,7 @@ export function App(props: AppProps) {
 
       // Session actions
       case "n":
-        // Create new session - opens issue selector (full implementation in Phase 8)
-        setActiveModal("issues")
+        setActiveModal("manual")
         break
 
       case "d": {
@@ -259,22 +267,44 @@ export function App(props: AppProps) {
         break
 
       case "return":
-        // Full takeover mode - start/resume session if not active
-        try {
+        // Full takeover mode - start session if needed, then attach
+        (async () => {
           const session = selectedSession()
-          if (!session) break
+          if (!session) return
 
-          if (session.status === "queued" || session.status === "paused") {
-            sessionManager.startSession({
-              sessionId: session.id,
-              prompt: generateSWEPrompt(session),
-              resumeSessionId: session.aiSessionData?.sessionId,
-            })
+          try {
+            // If session needs starting, start it first and await completion
+            if (session.status === "queued" || session.status === "paused") {
+              await sessionManager.startSession({
+                sessionId: session.id,
+                prompt: generateSWEPrompt(session),
+                resumeSessionId: session.aiSessionData?.sessionId,
+              })
+            }
+
+            // Re-fetch session to get updated status after start
+            const updatedSession = getSession(session.id)
+            if (updatedSession?.status === "active") {
+              const cmd = sessionManager.getAttachCommand(session.id)
+
+              // Suspend OpenTUI before yielding terminal to tmux
+              renderer.suspend()
+
+              Bun.spawnSync(cmd, { stdio: ["inherit", "inherit", "inherit"] })
+
+              // Resume OpenTUI - this properly re-establishes terminal state
+              renderer.resume()
+
+              // Refresh activities to show latest state after detach
+              loadPreviewActivities(session.id)
+            }
+
+            loadSessions()
+          } catch (error) {
+            logger.error("Session start/attach failed:", error)
             loadSessions()
           }
-        } catch {
-          // If session start fails, keep UI responsive
-        }
+        })()
         break
 
       // Modal triggers
@@ -283,7 +313,11 @@ export function App(props: AppProps) {
         break
 
       case "i":
-        setActiveModal("issues")
+        if (projectInfo()) {
+          setActiveModal("issues")
+        } else {
+          logger.warn("Cannot open issues modal: project info not loaded")
+        }
         break
 
       case "?":
@@ -333,7 +367,8 @@ export function App(props: AppProps) {
         />
         <Preview
           session={selectedSession()}
-          lines={previewLines()}
+          activities={previewActivities()}
+          startedAt={sessionStartedAt()}
         />
       </box>
 
@@ -370,7 +405,28 @@ export function App(props: AppProps) {
           ownerRepo={projectInfo()!.repoFullName}
           projectRoot={props.projectRoot}
           onClose={() => setActiveModal("none")}
-          onSessionsCreated={() => loadSessions()}
+          onSessionsCreated={async (sessions) => {
+            // Auto-start all created sessions
+            for (const session of sessions) {
+              try {
+                await sessionManager.startSession({
+                  sessionId: session.id,
+                  prompt: generateSWEPrompt(session),
+                })
+              } catch (error) {
+                logger.error("Failed to auto-start session", { sessionId: session.id, error })
+              }
+            }
+            loadSessions()
+          }}
+        />
+      </Show>
+
+      <Show when={activeModal() === "manual"}>
+        <ManualSessionModal
+          projectRoot={props.projectRoot}
+          onClose={() => setActiveModal("none")}
+          onSessionCreated={() => loadSessions()}
         />
       </Show>
 

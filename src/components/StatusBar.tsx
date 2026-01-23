@@ -73,6 +73,7 @@ function HeaderBar(props: {
 function FooterBar() {
   const hints = [
     { key: keybindings.navigate, action: "Navigate" },
+    { key: keybindings.newSession, action: "New" },
     { key: keybindings.tasks, action: "Tasks" },
     { key: keybindings.issues, action: "Issues" },
     { key: keybindings.help, action: "Help" },

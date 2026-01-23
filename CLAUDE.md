@@ -1,115 +1,203 @@
+# AGENTS.md - OpenSWE Agent Guidelines
 
-Default to using Bun instead of Node.js.
+Guidelines for AI agents working on OpenSWE - an AI-powered software engineering orchestration tool.
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+## Tech Stack
 
-## Type Safety
+| Component | Tool | Notes |
+|-----------|------|-------|
+| Runtime | **Bun** (NOT Node.js) | Native SQLite, fast startup |
+| Language | TypeScript (strict mode) | Use strict typing everywhere |
+| TUI | @opentui/core + @opentui/solid | Solid.js reactivity |
+| CLI Parser | yargs | |
+| Prompts | @clack/prompts | First-run wizard |
+| Database | SQLite via bun:sqlite | Built into Bun |
+| Config | TOML via @iarna/toml | snake_case in files, camelCase in code |
+| GitHub | gh CLI (shelled out) | Handles auth |
+| PTY | bun-pty | Post-MVP |
 
-- Use strict typing everywhere possible. Avoid `any` without explicit justification.
-- Prefer type literals and type guards for constrained values.
+**Build Requirement**: Zig must be installed (OpenTUI native dependency)
+
+## Commands
+
+```bash
+bun install                           # Install dependencies
+bun run dev                           # Development mode
+bun src/index.ts                      # Direct execution
+bun --hot src/index.ts                # Hot reloading
+
+bun run build                         # Build to dist/
+
+bun test                              # Run all tests
+bun test src/foo.test.ts              # Single test file
+bun test --watch                      # Watch mode
+bun test --filter "pattern"           # Filter tests
+
+bunx tsc --noEmit                     # Type check without emit
+```
 
 ## Iteration Finish
 
-- Always lint/type-check at the end of each iteration (`bunx tsc --noEmit` unless a dedicated lint script exists).
+- Always run lint/type checks at the end of each iteration (`bunx tsc --noEmit` unless a dedicated lint script exists)
 
-## APIs
+## Project Structure
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+```
+src/
+├── index.ts              # CLI entry point with yargs
+├── app.tsx               # Main Solid.js TUI application
+├── components/           # TUI components (SessionList, Preview, modals)
+├── core/                 # Session state machine, PTY, parser, queue
+├── workspace/            # Detect/init workspace, path utilities
+├── github/               # gh CLI wrapper, issues, PR creation
+├── git/                  # Clone, worktree operations
+├── store/                # SQLite db, sessions/tasks/project CRUD
+├── config/               # Types, global loader, defaults, env
+├── prompts/              # SWE system prompt template
+└── utils/                # Logger, ID generation, formatting
+```
+
+## Code Style
+
+### Formatting
+- **No semicolons**
+- **2-space indentation**
+- **Double quotes** for strings
+- **Trailing commas** in multiline structures
+- **No emojis** in output, UI strings, or documentation
+
+### Imports (in order)
+1. Node.js/Bun built-ins (`os`, `path`, `fs/promises`)
+2. External packages (`yargs`, `@iarna/toml`)
+3. Internal with path alias (`@/*` for `src/*`)
+4. Relative imports (`./`, `../`)
+
+```typescript
+import { homedir } from "os"
+import { parse as parseToml } from "@iarna/toml"
+import type { GlobalConfig } from "@/config/types"
+import { logger } from "./logger"
+```
+
+### Types
+- **Strict mode** - use strict typing everywhere possible; never use `any` without justification
+- **Explicit return types** on exported functions
+- **Type literals** for constrained values
+- **Type guards** for runtime validation
+
+```typescript
+export type Phase = "pending" | "research" | "planning" | "coding" | "testing" | "pr_creation" | "completed" | "failed"
+export type Status = "queued" | "active" | "paused" | "needs_attention" | "completed" | "failed"
+
+export function isValidPhase(val: unknown): val is Phase {
+  return typeof val === "string" && VALID_PHASES.includes(val as Phase)
+}
+```
+
+### Naming
+| Element | Convention | Example |
+|---------|------------|---------|
+| Files | kebab-case or camelCase | `session.ts`, `swe-system.ts` |
+| Types/Interfaces | PascalCase | `Session`, `HumanTask` |
+| Functions | camelCase | `loadConfig`, `createSession` |
+| Constants | SCREAMING_SNAKE_CASE | `DEFAULT_CONFIG` |
+
+### Error Handling
+- **try-catch** for async operations that may fail
+- **Graceful degradation** - return sensible defaults
+- **Log warnings** for non-fatal issues
+- **Throw errors** only for fatal conditions
+
+### Documentation
+```typescript
+/**
+ * Load and merge configuration from all sources
+ * @param cliOverrides - Optional CLI flag overrides
+ * @returns Fully resolved configuration
+ */
+export async function loadConfig(cliOverrides?: CLIOverrides): Promise<GlobalConfig>
+
+// ============================================================================
+// Section Headers
+// ============================================================================
+```
+
+## Bun-Specific APIs
+
+Prefer Bun APIs over Node.js equivalents:
+
+| Use This | Instead Of |
+|----------|------------|
+| `Bun.file()` / `Bun.write()` | `fs.readFile` / `fs.writeFile` |
+| `Bun.$\`cmd\`` | `child_process`, `execa` |
+| `bun:sqlite` | `better-sqlite3` |
+| `Bun.serve()` | `express` |
+
+Environment variables auto-load from `.env` - don't use `dotenv`.
+
+## Key Data Models
+
+```typescript
+interface Session {
+  id: string
+  name: string
+  issueNumber: number | null
+  worktreePath: string              // .worktrees/issue-123
+  branchName: string                // openswe/issue-123
+  phase: Phase
+  status: Status
+  attentionReason: string | null
+  retryCount: number                // 0-2, then needs_attention
+  tokensUsed: number
+  prUrl: string | null
+  pid: number | null
+}
+
+interface HumanTask {
+  id: string
+  sessionId: string
+  type: "question" | "permission" | "blocker" | "retry_failed" | "pr_review"
+  priority: "high" | "medium" | "low"
+  title: string
+  context: string
+  rawOutput: string
+}
+```
+
+## Configuration Precedence
+
+1. CLI flags (highest): `--backend`, `--max-sessions`, `--debug`
+2. Environment variables: `OPENSWE_BACKEND`, `OPENSWE_LOG_LEVEL`, etc.
+3. Global config file: `~/.config/openswe/config.toml`
+4. Built-in defaults (lowest)
 
 ## Testing
 
-Use `bun test` to run tests.
+```typescript
+import { test, expect, describe } from "bun:test"
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
-```
-
-## Frontend
-
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
-
-Server:
-
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
+describe("Session", () => {
+  test("creates session with pending phase", async () => {
+    const session = await createSession({ name: "test" })
+    expect(session.phase).toBe("pending")
+    expect(session.status).toBe("queued")
+  })
 })
 ```
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+## Workspace Model
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
+- **Project-local**: Each workspace tied to single repo
+- **Directory-based**: User chooses where to work
+- **Worktrees**: Sessions isolated in `.worktrees/{issue-number}/`
+- **State**: Project state in `.openswe/state.db`
 
-With the following `frontend.tsx`:
+Detection logic:
+1. `.openswe/` exists → Load existing project
+2. `.git/` exists → Offer to adopt repo
+3. `--repo` flag → Clone to current dir
+4. Empty dir → Run setup wizard
 
-```tsx#frontend.tsx
-import React from "react";
-import { createRoot } from "react-dom/client";
+## WIP
 
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+This project is a WIP, meaning you can overwrite code and make db schema changes. Ensure that best coding practices are followed, even if it means having to reset the local db or make breaking code changes.

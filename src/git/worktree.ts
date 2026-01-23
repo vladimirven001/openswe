@@ -8,6 +8,7 @@
 
 import { join } from "path"
 import { getWorktreesDir, getWorktreePath, generateBranchName, WORKTREES_DIR } from "../workspace/paths"
+import { logger } from "../utils/logger"
 
 // ============================================================================
 // Types
@@ -106,9 +107,16 @@ export async function createWorktree(
   const worktreePath = getWorktreePath(projectRoot, name)
   const branchName = generateBranchName(name)
 
+  logger.debug("Creating worktree", {
+    projectRoot,
+    worktreePath,
+    branchName,
+  })
+
   // Check if worktree already exists
   const exists = await worktreeExists(projectRoot, name)
   if (exists) {
+    logger.warn("Worktree already exists", worktreePath)
     return {
       success: false,
       error: `Worktree already exists: ${worktreePath}`,
@@ -134,6 +142,7 @@ export async function createWorktree(
       // Parse common errors
       if (stderr.includes("already exists")) {
         // Branch might exist, try without -b flag
+        logger.warn("Branch exists, retrying worktree creation", branchName)
         const retryProc = Bun.spawn(
           ["git", "worktree", "add", worktreePath, branchName],
           {
@@ -147,12 +156,14 @@ export async function createWorktree(
         const retryExitCode = await retryProc.exited
 
         if (retryExitCode !== 0) {
+          logger.warn("Worktree creation retry failed", retryStderr.trim())
           return {
             success: false,
             error: retryStderr.trim() || "Failed to create worktree",
           }
         }
       } else {
+        logger.warn("Worktree creation failed", stderr.trim())
         return {
           success: false,
           error: stderr.trim() || "Failed to create worktree",
@@ -321,7 +332,7 @@ export async function removeWorktree(
  * @param name - Worktree name (issue number or custom name)
  * @returns True if worktree exists
  */
-async function worktreeExists(
+export async function worktreeExists(
   projectRoot: string,
   name: string | number
 ): Promise<boolean> {

@@ -12,6 +12,7 @@
 /** Session phases representing the workflow stages */
 export type Phase =
   | "pending"
+  | "initializing"
   | "research"
   | "planning"
   | "coding"
@@ -211,6 +212,7 @@ export interface OutputBuffer {
 
 const VALID_PHASES: readonly Phase[] = [
   "pending",
+  "initializing",
   "research",
   "planning",
   "coding",

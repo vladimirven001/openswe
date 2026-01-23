@@ -10,7 +10,7 @@ import { useKeyboard } from "@opentui/solid"
 import type { HumanTask, TaskType, TaskPriority } from "../store"
 import { getUnresolvedTasks } from "../store"
 import type { TaskQueueModalProps } from "./types"
-import { colors } from "./theme"
+import { colors, borders } from "./theme"
 import { formatRelativeTime } from "../utils/format"
 
 // Bold attribute constant
@@ -24,9 +24,9 @@ const BOLD = 1
 const TASK_TYPE_ICONS: Record<TaskType, string> = {
   question: "?",
   permission: "!",
-  blocker: "⚠",
-  retry_failed: "✗",
-  pr_review: "✓",
+  blocker: "B",
+  retry_failed: "X",
+  pr_review: "R",
 }
 
 /** Display names for task types */
@@ -81,7 +81,7 @@ function truncate(text: string, maxLength: number): string {
 export function TaskQueueModal(props: TaskQueueModalProps) {
   const modalWidth = 70
   const modalHeight = 22
-  const listHeight = modalHeight - 6 // Account for header, footer, borders
+  const listHeight = modalHeight - 6 // Account for header(1), separator(1), footer(2 with separator), border(2)
 
   // State
   const [tasks, setTasks] = createSignal<HumanTask[]>([])
@@ -176,6 +176,7 @@ export function TaskQueueModal(props: TaskQueueModalProps) {
         backgroundColor={colors.bg.secondary}
         borderStyle="rounded"
         borderColor={colors.border.accent}
+        overflow="hidden"
       >
         {/* Header */}
         <box
@@ -225,10 +226,11 @@ export function TaskQueueModal(props: TaskQueueModalProps) {
                   return (
                     <box
                       flexDirection="row"
-                      height={2}
+                      minHeight={2}
                       backgroundColor={isSelected() ? colors.bg.cardSelected : undefined}
                       paddingLeft={1}
                       paddingRight={1}
+                      overflow="hidden"
                     >
                       {/* Priority indicator and type icon */}
                       <box width={3}>
@@ -238,14 +240,14 @@ export function TaskQueueModal(props: TaskQueueModalProps) {
                       </box>
 
                       {/* Task content */}
-                      <box flexDirection="column" flexGrow={1}>
+                      <box flexDirection="column" flexGrow={1} overflow="hidden">
                         {/* Title */}
                         <text fg={colors.text.primary}>
-                          {truncate(task.title, 30)}
+                          {truncate(task.title, 28)}
                         </text>
                         {/* Session info */}
                         <text fg={colors.text.muted}>
-                          {truncate(task.sessionName, 20)}
+                          {truncate(task.sessionName, 18)}
                           {task.issueNumber ? ` #${task.issueNumber}` : ""}
                         </text>
                       </box>
@@ -264,8 +266,14 @@ export function TaskQueueModal(props: TaskQueueModalProps) {
           </box>
 
           {/* Separator */}
-          <box width={1}>
-            <text fg={colors.border.primary}>│</text>
+          <box
+            width={1}
+            flexDirection="column"
+            alignItems="center"
+          >
+            <For each={Array.from({ length: listHeight })}>
+              {() => <text fg={colors.border.primary}>│</text>}
+            </For>
           </box>
 
           {/* Detail panel */}
@@ -327,12 +335,19 @@ export function TaskQueueModal(props: TaskQueueModalProps) {
           </box>
         </box>
 
+        {/* Separator */}
+        <box height={1} paddingLeft={1} paddingRight={1}>
+          <text fg={colors.border.primary}>
+            {borders.panel.horizontal.repeat(modalWidth - 2)}
+          </text>
+        </box>
+
         {/* Footer */}
         <box
           height={1}
           justifyContent="center"
-          borderStyle="single"
-          borderColor={colors.border.primary}
+          paddingLeft={1}
+          paddingRight={1}
         >
           <text fg={colors.text.muted}>
             j/k navigate | Enter jump to session | Esc close

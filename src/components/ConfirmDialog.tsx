@@ -16,7 +16,8 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
 
   // Split message into lines
   const messageLines = () => props.message.split("\n")
-  const modalHeight = () => messageLines().length + 8 // title + padding + footer
+  // Height: title(1) + message lines + padding(2) + footer(2 with border) + borders(2)
+  const modalHeight = () => messageLines().length + 7
 
   return (
     <box
@@ -36,6 +37,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
         backgroundColor={colors.bg.secondary}
         borderStyle="rounded"
         borderColor={colors.accent.warning}
+        overflow="hidden"
       >
         {/* Header / Title */}
         <box
@@ -72,13 +74,16 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
           justifyContent="center"
           borderStyle="single"
           borderColor={colors.border.primary}
-          gap={2}
+          gap={4}
         >
-          <text fg={colors.accent.success}>[Enter]</text>
-          <text fg={colors.text.muted}> Confirm</text>
-          <text fg={colors.text.muted}>    </text>
-          <text fg={colors.accent.error}>[Esc]</text>
-          <text fg={colors.text.muted}> Cancel</text>
+          <box flexDirection="row" gap={1}>
+            <text fg={colors.accent.success}>[Enter]</text>
+            <text fg={colors.text.muted}>Confirm</text>
+          </box>
+          <box flexDirection="row" gap={1}>
+            <text fg={colors.accent.error}>[Esc]</text>
+            <text fg={colors.text.muted}>Cancel</text>
+          </box>
         </box>
       </box>
     </box>

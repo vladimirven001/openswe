@@ -127,3 +127,17 @@ export {
   clearBuffer,
   deleteBuffer,
 } from "./buffers"
+
+// ============================================================================
+// Activity Operations (In-Memory)
+// ============================================================================
+
+export {
+  getRecentActivities,
+  addActivity,
+  addActivities,
+  clearActivities,
+  hasActivities,
+  getActivityCount,
+  getSessionsWithActivities,
+} from "./activities"

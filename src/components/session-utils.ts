@@ -5,15 +5,31 @@
  * These functions handle the complete workflow of creating and deleting sessions.
  */
 
-import { createWorktree, removeWorktree } from "../git"
+import { createWorktree, removeWorktree, worktreeExists } from "../git"
 import { createSession, deleteSession, getSession } from "../store"
 import { getWorktreePath, generateBranchName, sanitizeWorktreeName } from "../workspace/paths"
 import type { GitHubIssue } from "../github"
 import type { Session } from "../store"
+import { logger } from "../utils/logger"
 
 // ============================================================================
 // Types
 // ============================================================================
+
+/** Options for creating a session from an issue */
+export interface CreateSessionOptions {
+  /**
+   * Custom worktree name to use instead of the issue number.
+   * Useful when resolving conflicts by appending a suffix.
+   */
+  worktreeNameOverride?: string
+  
+  /**
+   * Whether to overwrite an existing worktree if it exists.
+   * If false (default), will fail if worktree exists.
+   */
+  overwrite?: boolean
+}
 
 /** Result of creating a session */
 export interface CreateSessionResult {
@@ -38,6 +54,36 @@ export interface DeleteSessionResult {
 // ============================================================================
 
 /**
+ * Find the next available worktree name by appending a counter
+ * 
+ * @param projectRoot - Absolute path to the project root
+ * @param baseName - Base name (e.g. issue number)
+ * @returns Available name (e.g. "issue-123", "issue-123-1")
+ */
+export async function findNextAvailableWorktreeName(
+  projectRoot: string,
+  baseName: string | number
+): Promise<string> {
+  // Get the canonical folder name first (e.g. 123 -> "issue-123")
+  const safeBase = sanitizeWorktreeName(baseName)
+  
+  // First check the base name
+  if (!(await worktreeExists(projectRoot, safeBase))) {
+    return safeBase
+  }
+  
+  // Try appending counters until we find a free one
+  let counter = 1
+  while (true) {
+    const candidate = `${safeBase}-${counter}`
+    if (!(await worktreeExists(projectRoot, candidate))) {
+      return candidate
+    }
+    counter++
+  }
+}
+
+/**
  * Create a session from a GitHub issue
  *
  * This function:
@@ -46,17 +92,36 @@ export interface DeleteSessionResult {
  *
  * @param projectRoot - Absolute path to the project root
  * @param issue - GitHub issue data
+ * @param options - Creation options (optional)
  * @returns Result with the created session or error
  */
 export async function createSessionFromIssue(
   projectRoot: string,
-  issue: GitHubIssue
+  issue: GitHubIssue,
+  options: CreateSessionOptions = {}
 ): Promise<CreateSessionResult> {
-  const worktreeName = issue.number
+  const worktreeName = options.worktreeNameOverride ?? issue.number
+
+  logger.debug("Creating worktree for issue", {
+    issueNumber: issue.number,
+    worktreeName,
+    projectRoot,
+    overwrite: options.overwrite,
+  })
+
+  // Handle overwrite if requested
+  if (options.overwrite) {
+    const exists = await worktreeExists(projectRoot, worktreeName)
+    if (exists) {
+      logger.info("Overwriting existing worktree", { worktreeName })
+      await removeWorktree(projectRoot, worktreeName, { force: true, deleteBranch: true })
+    }
+  }
 
   // Create the worktree
   const worktreeResult = await createWorktree(projectRoot, worktreeName)
   if (!worktreeResult.success) {
+    logger.warn("Worktree creation failed", worktreeResult.error)
     return {
       success: false,
       session: null,
@@ -76,12 +141,18 @@ export async function createSessionFromIssue(
       branchName: worktreeResult.branchName!,
     })
 
+    logger.debug("Session created", {
+      sessionId: session.id,
+      issueNumber: issue.number,
+    })
+
     return {
       success: true,
       session,
     }
   } catch (err) {
     // Clean up the worktree if session creation fails
+    logger.warn("Session creation failed, cleaning up worktree", err)
     await removeWorktree(projectRoot, worktreeName, { force: true, deleteBranch: true })
 
     return {
@@ -109,9 +180,16 @@ export async function createManualSession(
 ): Promise<CreateSessionResult> {
   const sanitizedName = sanitizeWorktreeName(name)
 
+  logger.debug("Creating manual session", {
+    name,
+    sanitizedName,
+    projectRoot,
+  })
+
   // Create the worktree
   const worktreeResult = await createWorktree(projectRoot, sanitizedName)
   if (!worktreeResult.success) {
+    logger.warn("Worktree creation failed", worktreeResult.error)
     return {
       success: false,
       session: null,
@@ -127,12 +205,15 @@ export async function createManualSession(
       branchName: worktreeResult.branchName!,
     })
 
+    logger.debug("Manual session created", { sessionId: session.id })
+
     return {
       success: true,
       session,
     }
   } catch (err) {
     // Clean up the worktree if session creation fails
+    logger.warn("Manual session creation failed, cleaning up worktree", err)
     await removeWorktree(projectRoot, sanitizedName, { force: true, deleteBranch: true })
 
     return {

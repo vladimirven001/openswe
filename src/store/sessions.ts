@@ -15,6 +15,7 @@ import type {
   AISessionData,
 } from "./types"
 import { isValidAISessionData } from "./types"
+import { logger } from "../utils/logger"
 
 // ============================================================================
 // Database Row Type
@@ -195,6 +196,13 @@ export function createSession(data: CreateSessionInput): Session {
   const now = nowISO()
   const aiSessionData = serializeAISessionData(data.aiSessionData ?? null)
 
+  logger.debug("Creating session", {
+    id,
+    name: data.name,
+    issueNumber: data.issueNumber ?? null,
+    worktreePath: data.worktreePath,
+  })
+
   db.query(
     `INSERT INTO sessions (
       id, name, issue_number, issue_title, issue_body, issue_url,
@@ -215,6 +223,8 @@ export function createSession(data: CreateSessionInput): Session {
     now,
     now
   )
+
+  logger.debug("Session created", { id })
 
   return {
     id,

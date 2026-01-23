@@ -72,6 +72,7 @@ export function HelpModal(props: HelpModalProps) {
         backgroundColor={colors.bg.secondary}
         borderStyle="rounded"
         borderColor={colors.border.accent}
+        overflow="hidden"
       >
         {/* Header */}
         <box
@@ -86,7 +87,7 @@ export function HelpModal(props: HelpModalProps) {
         </box>
 
         {/* Content */}
-        <box flexDirection="column" flexGrow={1} paddingLeft={2} paddingRight={2}>
+        <scrollbox flexDirection="column" flexGrow={1} paddingLeft={2} paddingRight={2}>
           <For each={KEY_SECTIONS}>
             {(section) => (
               <box flexDirection="column" paddingTop={1}>
@@ -97,10 +98,13 @@ export function HelpModal(props: HelpModalProps) {
                 {/* Keybindings */}
                 <For each={section.bindings}>
                   {(binding) => (
-                    <box flexDirection="row" gap={1} paddingLeft={2}>
-                      <text fg={colors.text.primary}>
-                        {binding.key.padEnd(12)}
-                      </text>
+                    <box flexDirection="row" paddingLeft={2}>
+                      {/* Fixed width box for key to ensure alignment */}
+                      <box width={14}>
+                        <text fg={colors.text.primary}>
+                          {binding.key}
+                        </text>
+                      </box>
                       <text fg={colors.text.secondary}>
                         {binding.description}
                       </text>
@@ -110,7 +114,7 @@ export function HelpModal(props: HelpModalProps) {
               </box>
             )}
           </For>
-        </box>
+        </scrollbox>
 
         {/* Footer */}
         <box

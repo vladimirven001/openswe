@@ -6,9 +6,12 @@
 
 import { render } from "@opentui/solid"
 import { App } from "./components"
+import { ThemeProvider } from "./theme"
 import type { GlobalConfig } from "./config"
-import { initDatabaseWithPath } from "./store"
+import { createProject, initDatabaseWithPath, projectExists } from "./store"
 import { getStateDatabasePath } from "./workspace/paths"
+import { loadProjectConfig } from "./workspace/project"
+import { logger } from "./utils/logger"
 
 /**
  * Start the TUI application
@@ -19,8 +22,54 @@ import { getStateDatabasePath } from "./workspace/paths"
 export async function startTUI(config: GlobalConfig, projectRoot: string) {
   // Initialize database with project-specific path
   const dbPath = getStateDatabasePath(projectRoot)
-  initDatabaseWithPath(dbPath)
+  await initDatabaseWithPath(dbPath)
+
+  // Ensure project metadata exists in the database
+  try {
+    const projectConfig = await loadProjectConfig(projectRoot)
+    if (!projectConfig) {
+      logger.warn("Project config not found; skipping project DB initialization")
+    } else if (!projectExists()) {
+      createProject({
+        repoFullName: projectConfig.repoFullName,
+        repoUrl: projectConfig.repoUrl,
+        maxActiveSessions: projectConfig.maxActiveSessions,
+      })
+      logger.debug("Initialized project state in database", projectConfig)
+    } else {
+      logger.debug("Project state already present in database")
+    }
+  } catch (error) {
+    logger.error("Failed to initialize project state in database", error)
+  }
 
   // Render the TUI
-  await render(() => <App config={config} projectRoot={projectRoot} />)
+  const rendererConfig = {
+    stdin: process.stdin,
+    stdout: process.stdout,
+    useAlternateScreen: true,
+    useMouse: false,
+    useKittyKeyboard:
+      process.env.OPENTUI_KITTY === "1"
+        ? {
+            disambiguate: true,
+            alternateKeys: true,
+            events: true,
+          }
+        : null,
+  }
+
+  process.stdin.resume()
+
+  await render(
+    () => (
+      <ThemeProvider
+        initialTheme={config.ui?.theme}
+        initialMode={config.ui?.themeMode}
+      >
+        <App config={config} projectRoot={projectRoot} />
+      </ThemeProvider>
+    ),
+    rendererConfig,
+  )
 }

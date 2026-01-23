@@ -53,4 +53,9 @@ export const DEFAULT_CONFIG: GlobalConfig = {
   advanced: {
     logLevel: "info",
   },
+
+  ui: {
+    theme: "tokyonight",
+    themeMode: "dark",
+  },
 }

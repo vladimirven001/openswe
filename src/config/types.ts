@@ -66,6 +66,14 @@ export interface AdvancedConfig {
   logLevel: LogLevel
 }
 
+/** UI/Theme configuration */
+export interface UIConfig {
+  /** Theme name (bundled or custom) */
+  theme: string
+  /** Theme mode (dark or light) */
+  themeMode: "dark" | "light"
+}
+
 // ============================================================================
 // Full Configuration Interface
 // ============================================================================
@@ -77,6 +85,7 @@ export interface GlobalConfig {
   pr: PRConfig
   keybindings: KeybindingsConfig
   advanced: AdvancedConfig
+  ui: UIConfig
 }
 
 // ============================================================================

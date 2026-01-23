@@ -64,6 +64,7 @@ src/
 - **2-space indentation**
 - **Double quotes** for strings
 - **Trailing commas** in multiline structures
+- **No emojis** in output, UI strings, or documentation
 
 ### Imports (in order)
 1. Node.js/Bun built-ins (`os`, `path`, `fs/promises`)
@@ -196,3 +197,7 @@ Detection logic:
 2. `.git/` exists → Offer to adopt repo
 3. `--repo` flag → Clone to current dir
 4. Empty dir → Run setup wizard
+
+## WIP
+
+This project is a WIP, meaning you can overwrite code and make db schema changes. Ensure that best coding practices are followed, even if it means having to reset the local db or make breaking code changes.

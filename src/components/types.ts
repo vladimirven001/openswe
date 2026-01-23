@@ -13,15 +13,16 @@ import type { GlobalConfig } from "../config"
 export const STATUS_ICONS: Record<Status, string> = {
   active: "●",
   queued: "○",
-  needs_attention: "⚠",
+  needs_attention: "!",
   completed: "✓",
-  paused: "⏸",
+  paused: "P",
   failed: "✗",
 }
 
 /** Ordered list of phases for progress calculation */
 export const PHASE_ORDER: readonly Phase[] = [
   "pending",
+  "initializing",
   "research",
   "planning",
   "coding",
@@ -34,6 +35,7 @@ export const PHASE_ORDER: readonly Phase[] = [
 /** Human-readable phase display names */
 export const PHASE_DISPLAY_NAMES: Record<Phase, string> = {
   pending: "Pending",
+  initializing: "Initializing",
   research: "Research",
   planning: "Planning",
   coding: "Coding",
@@ -48,7 +50,7 @@ export const PHASE_DISPLAY_NAMES: Record<Phase, string> = {
 // ============================================================================
 
 /** Active modal state */
-export type ModalType = "none" | "tasks" | "issues" | "help" | "confirm-delete"
+export type ModalType = "none" | "tasks" | "issues" | "help" | "confirm-delete" | "manual"
 
 // ============================================================================
 // Component Props
@@ -76,7 +78,8 @@ export interface SessionCardProps {
 /** Props for the preview pane */
 export interface PreviewProps {
   session: Session | null
-  lines: string[]
+  activities: ActivityEvent[]
+  startedAt?: Date
 }
 
 /** Props for the status bar */
@@ -116,8 +119,18 @@ export interface IssueSelectorModalProps {
   projectRoot: string
   /** Callback when modal is closed */
   onClose: () => void
+  /** Callback when sessions are created - receives created sessions for auto-start */
+  onSessionsCreated: (sessions: Session[]) => void
+}
+
+/** Props for ManualSessionModal component */
+export interface ManualSessionModalProps {
+  /** Absolute path to the project root */
+  projectRoot: string
+  /** Callback when modal is closed */
+  onClose: () => void
   /** Callback when sessions are created (for refreshing the list) */
-  onSessionsCreated: () => void
+  onSessionCreated: () => void
 }
 
 /** Props for TaskQueueModal component */
@@ -133,6 +146,50 @@ export interface PendingAction {
   type: "delete"
   sessionId: string
   sessionName: string
+}
+
+// ============================================================================
+// Activity Types
+// ============================================================================
+
+/** Activity event types for timeline display */
+export type ActivityEventType =
+  | "session_start"
+  | "file_read"
+  | "file_edit"
+  | "file_write"
+  | "bash"
+  | "search"
+  | "phase"
+  | "thinking"
+  | "question"
+  | "git"
+  | "test"
+  | "error"
+
+/** Activity event for timeline preview */
+export interface ActivityEvent {
+  type: ActivityEventType
+  timestamp: Date
+  title: string
+  detail?: string
+  icon: string
+}
+
+/** Icon mapping for activity types */
+export const ACTIVITY_ICONS: Record<ActivityEventType, string> = {
+  session_start: "S",
+  file_read: "R",
+  file_edit: "E",
+  file_write: "W",
+  bash: "$",
+  search: "/",
+  phase: "#",
+  thinking: "~",
+  question: "?",
+  git: "G",
+  test: "T",
+  error: "X",
 }
 
 // ============================================================================

@@ -1,11 +1,10 @@
 /**
- * Session lifecycle manager
+ * Session lifecycle manager (Tmux Backend)
  *
- * Coordinates PTY sessions, output parsing, and state transitions.
+ * Coordinates Tmux sessions, output parsing, and state transitions.
  * Handles PR automation when sessions complete.
  */
 
-import type { IExitEvent } from "bun-pty"
 import {
   getSession,
   getSessionsByStatus,
@@ -17,16 +16,21 @@ import {
   setAISessionData,
   setLines,
   isValidPhase,
+  getProject,
 } from "../store"
+import { addActivity } from "../store/activities"
 import type { AISessionData } from "../store"
 import type { GlobalConfig } from "../config"
 import { parseOutputLine } from "./parser"
-import type { PTYSession, SpawnOptions } from "./pty"
-import { PTYManager } from "./pty"
+import { parseActivityFromLine } from "./activity-parser"
+import { TmuxManager } from "./tmux"
 import { TaskQueueManager } from "./queue"
 import { pushBranch, getCommitsAhead, getDefaultBranch } from "../git"
 import { createPR, getExistingPR } from "../github"
 import { logger } from "../utils/logger"
+import { getSessionLogPath } from "../workspace/paths"
+import { dirname } from "path"
+import { mkdir, open } from "fs/promises"
 
 export interface StartSessionOptions {
   sessionId: string
@@ -35,73 +39,104 @@ export interface StartSessionOptions {
   aiSessionData?: AISessionData | null
 }
 
-interface ActiveSessionListeners {
-  stopLineListener: () => void
-  stopExitListener: () => void
-}
-
-/**
- * Check if a process is still running
- */
-function isProcessAlive(pid: number): boolean {
-  try {
-    // Sending signal 0 tests if process exists without killing it
-    process.kill(pid, 0)
-    return true
-  } catch {
-    return false
-  }
+interface ActiveSession {
+  stopTail: () => void
+  logPath: string
 }
 
 export class SessionManager {
   private config: GlobalConfig
-  private ptyManager: PTYManager
+  private processManager: TmuxManager
   private taskQueue: TaskQueueManager
-  private listeners: Map<string, ActiveSessionListeners>
+  private activeSessions: Map<string, ActiveSession>
+  private projectRoot: string
+
+  private static readonly ANSI_ESCAPE_REGEX = /\x1b\[[0-9;]*[A-Za-z]/g
+  private static readonly ANSI_OSC_REGEX = /\x1b\][^\x07]*(?:\x07|\x1b\\)/g
 
   constructor(
     config: GlobalConfig,
-    ptyManager?: PTYManager,
+    projectRoot: string,
+    processManager?: TmuxManager,
     taskQueue?: TaskQueueManager
   ) {
     this.config = config
-    this.ptyManager = ptyManager ?? new PTYManager()
+    this.projectRoot = projectRoot
+    this.processManager = processManager ?? new TmuxManager()
     this.taskQueue = taskQueue ?? new TaskQueueManager()
-    this.listeners = new Map()
+    this.activeSessions = new Map()
+
+    // Start background poller for session health/exit detection
+    setInterval(() => this.checkSessionHealth(), 2000)
   }
 
   /**
-   * Recover sessions that were active when the app was last closed
+   * Recover sessions that were active/running
    *
-   * Call this on startup to handle orphaned sessions.
+   * Handles edge cases:
+   * - Sessions marked "active" in DB but not in tmux → mark as "paused"
+   * - Tmux sessions running but session marked "paused" → re-mark as "active"
+   * - Log orphaned tmux sessions for manual cleanup
    */
-  recoverSessions(): void {
-    const activeSessions = getSessionsByStatus("active")
+  async recoverSessions(): Promise<void> {
+    const activeIds = await this.processManager.listActiveSessions()
+    const dbActiveSessions = getSessionsByStatus("active")
+    const dbPausedSessions = getSessionsByStatus("paused")
 
-    for (const session of activeSessions) {
-      let shouldRecover = false
+    // Track which tmux sessions we've matched to DB sessions
+    const matchedTmuxIds = new Set<string>()
 
-      // Check if we have a live PTY for this session
-      const ptySession = this.ptyManager.getSession(session.id)
-      if (!ptySession) {
-        shouldRecover = true
-      }
-
-      // Double-check via PID if we have one
-      if (session.pid !== null && !isProcessAlive(session.pid)) {
-        shouldRecover = true
-      }
-
-      if (shouldRecover) {
-        // Transition to paused so user can resume
+    // 1. Handle sessions marked "active" in DB
+    for (const session of dbActiveSessions) {
+      if (activeIds.includes(session.id)) {
+        // DB active + tmux running → recover (attach log tail)
+        logger.info(`Recovering active session "${session.name}" (found in tmux)`)
+        await this.attachLogTail(session.id)
+        matchedTmuxIds.add(session.id)
+      } else {
+        // DB active + tmux not running → crashed/finished while app was closed
+        logger.warn(`Session "${session.name}" marked active but not found in tmux. Marking as paused.`)
         updateSessionStatus(session.id, "paused")
         setPid(session.id, null)
-        logger.info(`Recovered session "${session.name}" - marked as paused`)
+      }
+    }
+
+    // 2. Handle sessions marked "paused" in DB but still running in tmux
+    for (const session of dbPausedSessions) {
+      if (activeIds.includes(session.id)) {
+        // DB paused + tmux running → re-activate
+        logger.info(`Session "${session.name}" found running in tmux (was marked paused). Re-activating.`)
+        updateSessionStatus(session.id, "active")
+        await this.attachLogTail(session.id)
+        matchedTmuxIds.add(session.id)
+      }
+    }
+
+    // 3. Log orphaned tmux sessions (running in tmux but no matching DB session)
+    for (const tmuxId of activeIds) {
+      if (!matchedTmuxIds.has(tmuxId)) {
+        const session = getSession(tmuxId)
+        if (!session) {
+          logger.warn(`Orphaned tmux session found: openswe-${tmuxId} (no DB record). Consider killing it manually with: tmux kill-session -t openswe-${tmuxId}`)
+        }
       }
     }
   }
 
-  startSession(options: StartSessionOptions): PTYSession {
+  /**
+   * Check if active sessions are still running
+   */
+  private async checkSessionHealth() {
+    for (const [sessionId, sessionData] of this.activeSessions) {
+      const isRunning = await this.processManager.isRunning(sessionId)
+      if (!isRunning) {
+        // Process exited!
+        this.handleExit(sessionId)
+      }
+    }
+  }
+
+  async startSession(options: StartSessionOptions): Promise<void> {
     const session = getSession(options.sessionId)
     if (!session) {
       throw new Error(`Session not found: ${options.sessionId}`)
@@ -110,76 +145,186 @@ export class SessionManager {
     try {
       updateSessionStatus(session.id, "active")
 
+      // Auto-transition to initializing phase
+      updateSessionPhase(session.id, "initializing")
+
+      // Add initial activity event
+        addActivity(session.id, {
+          type: "session_start",
+          timestamp: new Date(),
+          title: "Session started",
+          detail: session.issueNumber
+            ? `Initializing AI for issue #${session.issueNumber}`
+            : `Initializing AI for ${session.name}`,
+          icon: "S",
+        })
+
       if (options.aiSessionData !== undefined) {
         setAISessionData(session.id, options.aiSessionData)
       }
 
-      const spawnOptions: SpawnOptions = {
-        sessionId: session.id,
-        worktreePath: session.worktreePath,
-        prompt: options.prompt,
-        resumeSessionId: options.resumeSessionId,
+      const logPath = getSessionLogPath(this.projectRoot, session.id)
+      await this.ensureLogFile(logPath)
+
+      // Ensure log dir exists
+      // (Assuming getLogsDir ensures it, or we do it here)
+      // workspace/init.ts usually creates .openswe/logs, but let's be safe?
+      // For now assume it exists.
+
+      const args = ["--prompt", JSON.stringify(options.prompt)] // JSON stringify prompt to handle newlines/quotes safely in shell
+      if (options.resumeSessionId) {
+        args.push("--session", options.resumeSessionId)
       }
 
-      const ptySession = this.ptyManager.spawnSession(spawnOptions)
-      setPid(session.id, ptySession.pid)
+      // Filter env to remove undefined values
+      const env = Object.fromEntries(
+        Object.entries(process.env).filter(([, v]) => v !== undefined)
+      ) as Record<string, string>
 
-      const stopLineListener = ptySession.buffer.onLine((line) =>
-        this.handleOutputLine(session.id, line)
+      // Spawn tmux session
+      const pid = await this.processManager.spawn(
+        session.id,
+        "opencode",
+        args,
+        session.worktreePath,
+        env,
+        logPath
       )
-      const stopExitListener = ptySession.onExit((event) =>
-        this.handleExit(session.id, event)
-      )
 
-      this.listeners.set(session.id, { stopLineListener, stopExitListener })
+      setPid(session.id, pid)
 
-      return ptySession
+      // Start tailing logs for parsing
+      await this.attachLogTail(session.id)
+
     } catch (error) {
-      // Spawning failed - mark as failed
       updateSessionStatus(session.id, "failed")
       logger.error(`Failed to start session ${session.id}:`, error)
-
-      // Create a human task for the failure
       this.taskQueue.createFromRetryFailed(session.id)
-
       throw error
     }
   }
 
-  pauseSession(sessionId: string): void {
-    // Save buffer to database before killing
-    const ptySession = this.ptyManager.getSession(sessionId)
-    if (ptySession) {
-      const lines = ptySession.buffer.getLines()
-      setLines(sessionId, lines)
+  private async attachLogTail(sessionId: string): Promise<void> {
+    const logPath = getSessionLogPath(this.projectRoot, sessionId)
+    await this.ensureLogFile(logPath)
+
+    // Use tail -f to stream logs
+    const tailProc = Bun.spawn(["tail", "-f", "-n", "+1", logPath], {
+      stdout: "pipe",
+      stderr: "pipe"
+    })
+
+    // Consume stream
+    const reader = tailProc.stdout.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ""
+
+    const readLoop = async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split("\n")
+          
+          // Process all complete lines
+          buffer = lines.pop() || "" // Keep last incomplete line
+          
+          for (const line of lines) {
+            this.handleOutputLine(sessionId, line)
+          }
+        }
+      } catch (e) {
+        // Tail killed
+      }
     }
 
-    this.ptyManager.killSession(sessionId)
-    this.clearListeners(sessionId)
+    readLoop()
+
+    const errorReader = tailProc.stderr.getReader()
+    const handleError = async () => {
+      try {
+        const { value } = await errorReader.read()
+        if (value) {
+          const msg = new TextDecoder().decode(value)
+          if (msg.trim()) {
+            logger.warn(`Log tail error for ${sessionId}: ${msg.trim()}`)
+          }
+        }
+      } catch {
+        // Ignore tail stderr errors
+      }
+    }
+
+    handleError()
+
+    this.activeSessions.set(sessionId, {
+      logPath,
+      stopTail: () => {
+        tailProc.kill()
+      }
+    })
+  }
+
+  async pauseSession(sessionId: string): Promise<void> {
+    await this.processManager.kill(sessionId)
+    this.cleanupSession(sessionId)
     updateSessionStatus(sessionId, "paused")
     setPid(sessionId, null)
   }
 
-  stopSession(sessionId: string): void {
-    // Save buffer to database before killing
-    const ptySession = this.ptyManager.getSession(sessionId)
-    if (ptySession) {
-      const lines = ptySession.buffer.getLines()
-      setLines(sessionId, lines)
-    }
-
-    this.ptyManager.killSession(sessionId)
-    this.clearListeners(sessionId)
+  async stopSession(sessionId: string): Promise<void> {
+    await this.processManager.kill(sessionId)
+    this.cleanupSession(sessionId)
     updateSessionStatus(sessionId, "queued")
     setPid(sessionId, null)
   }
 
-  takeoverSession(sessionId: string): PTYSession | null {
-    return this.ptyManager.getSession(sessionId)
+  /**
+   * Get the current visual state of the session for preview
+   */
+  async getSnapshot(sessionId: string): Promise<string[]> {
+    try {
+      const snapshot = await this.processManager.getSnapshot(sessionId)
+      // Save to DB for persistence/caching if needed?
+      // For now just return
+      setLines(sessionId, snapshot.lines) // Update DB cache for when we are offline/paused
+      return snapshot.lines
+    } catch {
+      // If session not running, return cached lines from DB
+      const session = getSession(sessionId)
+      // return session?.outputBuffer ... (need to fetch from OB table)
+      return []
+    }
+  }
+
+  /**
+   * Get command to attach to this session
+   */
+  getAttachCommand(sessionId: string): string[] {
+    return this.processManager.getAttachCommand(sessionId)
+  }
+
+  private cleanupSession(sessionId: string) {
+    const active = this.activeSessions.get(sessionId)
+    if (active) {
+      active.stopTail()
+      this.activeSessions.delete(sessionId)
+    }
   }
 
   private handleOutputLine(sessionId: string, line: string): void {
-    const event = parseOutputLine(line)
+    const normalizedLine = this.normalizeOutputLine(line)
+
+    // Parse activity events for timeline display
+    const activity = parseActivityFromLine(normalizedLine)
+    if (activity) {
+      addActivity(sessionId, activity)
+    }
+
+    // Parse protocol events for state management
+    const event = parseOutputLine(normalizedLine)
     if (!event) return
 
     switch (event.type) {
@@ -189,10 +334,7 @@ export class SessionManager {
         }
         break
       case "done":
-        // Mark phase as pr_creation first
         updateSessionPhase(sessionId, "pr_creation")
-
-        // Trigger async PR workflow (don't block parsing)
         this.handleSessionCompletion(sessionId).catch((err) => {
           logger.error(`PR creation failed for ${sessionId}:`, err)
         })
@@ -215,39 +357,43 @@ export class SessionManager {
     }
   }
 
-  /**
-   * Handle session completion - push branch and create PR if configured
-   */
+  private normalizeOutputLine(line: string): string {
+    return line
+      .replace(SessionManager.ANSI_OSC_REGEX, "")
+      .replace(SessionManager.ANSI_ESCAPE_REGEX, "")
+      .replace(/\r/g, "")
+  }
+
+  private async ensureLogFile(logPath: string): Promise<void> {
+    const logDir = dirname(logPath)
+    try {
+      await mkdir(logDir, { recursive: true })
+      const handle = await open(logPath, "a")
+      await handle.close()
+    } catch (error) {
+      logger.warn(`Failed to initialize log file ${logPath}:`, error)
+    }
+  }
+
   private async handleSessionCompletion(sessionId: string): Promise<void> {
     const session = getSession(sessionId)
     if (!session) return
 
-    // Check if auto PR is enabled
     if (!this.config.pr.autoCreate) {
-      updateSessionPhase(sessionId, "completed")
-      updateSessionStatus(sessionId, "completed")
-      setPid(sessionId, null)
+      this.completeSession(sessionId)
       logger.info(`Session ${session.name} completed (auto PR disabled)`)
       return
     }
 
-    // Get base branch
     const baseBranch = await getDefaultBranch(session.worktreePath) ?? "main"
-
-    // Check if there are commits to push
     const commitsAhead = await getCommitsAhead(session.worktreePath, baseBranch)
     if (commitsAhead === 0) {
-      // No commits - mark complete without PR
-      updateSessionPhase(sessionId, "completed")
-      updateSessionStatus(sessionId, "completed")
-      setPid(sessionId, null)
+      this.completeSession(sessionId)
       logger.info(`Session ${session.name} completed (no commits to push)`)
       return
     }
 
     logger.info(`Session ${session.name}: ${commitsAhead} commits ahead, pushing branch...`)
-
-    // Push branch
     const pushResult = await pushBranch(session.worktreePath, session.branchName, true)
     if (!pushResult.success) {
       updateSessionStatus(sessionId, "needs_attention", `Push failed: ${pushResult.error}`)
@@ -255,20 +401,15 @@ export class SessionManager {
       return
     }
 
-    // Check if PR already exists
     const existingPR = await getExistingPR(session.worktreePath, session.branchName)
     if (existingPR) {
-      // PR already exists - just update and complete
       setPrUrl(sessionId, existingPR)
-      updateSessionPhase(sessionId, "completed")
-      updateSessionStatus(sessionId, "completed")
-      setPid(sessionId, null)
+      this.completeSession(sessionId)
       this.taskQueue.createPRReview(sessionId, existingPR)
       logger.info(`Session ${session.name} completed (existing PR: ${existingPR})`)
       return
     }
 
-    // Create PR
     logger.info(`Session ${session.name}: Creating PR...`)
     const prResult = await createPR({
       repoPath: session.worktreePath,
@@ -287,52 +428,53 @@ export class SessionManager {
       return
     }
 
-    // Success - update session and create review task
     setPrUrl(sessionId, prResult.prUrl!)
-    updateSessionPhase(sessionId, "completed")
-    updateSessionStatus(sessionId, "completed")
-    setPid(sessionId, null)
+    this.completeSession(sessionId)
     this.taskQueue.createPRReview(sessionId, prResult.prUrl!)
     logger.info(`Session ${session.name} completed - PR created: ${prResult.prUrl}`)
   }
 
-  private handleExit(sessionId: string, event: IExitEvent): void {
+  private completeSession(sessionId: string) {
+    updateSessionPhase(sessionId, "completed")
+    updateSessionStatus(sessionId, "completed")
+    setPid(sessionId, null)
+    // We don't necessarily kill the tmux session immediately? 
+    // Or do we? If it's done, opencode process likely exited.
+    // If not, we should probably leave it for user to inspect until they delete?
+    // Let's leave it running if it's still there (e.g. if opencode waits for keypress at end)
+    // But usually we want to free resources.
+    // For now: Leave it. `handleExit` will clean it up if process exits.
+  }
+
+  private handleExit(sessionId: string): void {
+    this.cleanupSession(sessionId)
+    
     const session = getSession(sessionId)
     if (!session) return
 
-    // Save buffer before cleanup
-    const ptySession = this.ptyManager.getSession(sessionId)
-    if (ptySession) {
-      const lines = ptySession.buffer.getLines()
-      setLines(sessionId, lines)
-    }
-
-    setPid(sessionId, null)
-    this.clearListeners(sessionId)
-
     if (session.status === "completed" || session.status === "failed") {
+      setPid(sessionId, null)
       return
     }
 
-    if (event.exitCode === 0) {
-      updateSessionStatus(sessionId, "queued")
-      return
-    }
-
-    const retryCount = incrementRetryCount(sessionId)
-    if (retryCount >= 2) {
-      updateSessionStatus(sessionId, "failed")
-      this.taskQueue.createFromRetryFailed(sessionId)
+    // Determine if it was a success or failure exit?
+    // We don't have exit code from polling. 
+    // But if we didn't get [OPENSWE:DONE], it's likely a crash or manual exit.
+    
+    // Check if phase is completed
+    if (session.phase === "completed") {
+      updateSessionStatus(sessionId, "completed")
     } else {
-      updateSessionStatus(sessionId, "queued")
+      const retryCount = incrementRetryCount(sessionId)
+      if (retryCount >= 2) {
+        updateSessionStatus(sessionId, "failed")
+        this.taskQueue.createFromRetryFailed(sessionId)
+      } else {
+        // Auto-restart? Or just queue?
+        // Logic says "queued" to retry.
+        updateSessionStatus(sessionId, "queued")
+      }
     }
-  }
-
-  private clearListeners(sessionId: string): void {
-    const listeners = this.listeners.get(sessionId)
-    if (!listeners) return
-    listeners.stopLineListener()
-    listeners.stopExitListener()
-    this.listeners.delete(sessionId)
+    setPid(sessionId, null)
   }
 }
