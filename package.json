@@ -1,0 +1,32 @@
+{
+  "name": "openswe",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "openswe": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "@iarna/toml": "^2.2.5",
+    "@opentui/core": "^0.1.74",
+    "@opentui/solid": "^0.1.74",
+    "bun-pty": "0.4.8",
+    "solid-js": "^1.9.9",
+    "uuid": "^9.0.0",
+    "yargs": "^18.0.0"
+  },
+  "devDependencies": {
+    "@tsconfig/bun": "^1.0.0",
+    "@types/babel__core": "7.20.5",
+    "@types/bun": "latest",
+    "@types/uuid": "^9.0.0",
+    "@types/yargs": "^17.0.33",
+    "typescript": "^5.0.0"
+  }
+}

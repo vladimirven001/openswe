@@ -1,0 +1,112 @@
+/**
+ * Environment variable configuration loader
+ *
+ * Parses OPENSWE_* environment variables into a partial config.
+ * Uses lenient validation - warns and skips invalid values.
+ */
+
+import type { PartialConfig } from "./types"
+import { isValidBackend, isValidLogLevel } from "./types"
+
+/**
+ * Parse a string to boolean
+ * Accepts: "true", "1", "yes" as true; "false", "0", "no" as false
+ */
+function parseBoolean(val: string): boolean | undefined {
+  const lower = val.toLowerCase().trim()
+  if (["true", "1", "yes"].includes(lower)) return true
+  if (["false", "0", "no"].includes(lower)) return false
+  return undefined
+}
+
+/**
+ * Parse a string to positive integer
+ */
+function parsePositiveInt(val: string): number | undefined {
+  const num = parseInt(val, 10)
+  if (!isNaN(num) && num > 0) return num
+  return undefined
+}
+
+/**
+ * Log a warning for invalid environment variable values
+ * Uses console.warn directly to avoid circular dependency with logger
+ */
+function warnInvalidEnv(varName: string, value: string, expected: string): void {
+  console.warn(
+    `[OpenSWE] Invalid value for ${varName}="${value}". Expected ${expected}. Using default.`
+  )
+}
+
+/**
+ * Load configuration from environment variables
+ *
+ * Supported variables:
+ * - OPENSWE_BACKEND: "opencode" | "claude"
+ * - OPENSWE_MAX_SESSIONS: positive integer
+ * - OPENSWE_LOG_LEVEL: "debug" | "info" | "warn" | "error"
+ * - OPENSWE_PR_AUTO_CREATE: "true" | "false"
+ * - OPENSWE_PR_DRAFT: "true" | "false"
+ */
+export function loadEnvConfig(): PartialConfig {
+  const config: PartialConfig = {}
+
+  // AI Backend
+  const backend = process.env.OPENSWE_BACKEND
+  if (backend !== undefined) {
+    if (isValidBackend(backend)) {
+      config.ai = { backend }
+    } else {
+      warnInvalidEnv("OPENSWE_BACKEND", backend, '"opencode" or "claude"')
+    }
+  }
+
+  // Max Sessions
+  const maxSessions = process.env.OPENSWE_MAX_SESSIONS
+  if (maxSessions !== undefined) {
+    const parsed = parsePositiveInt(maxSessions)
+    if (parsed !== undefined) {
+      config.defaults = { maxActiveSessions: parsed }
+    } else {
+      warnInvalidEnv("OPENSWE_MAX_SESSIONS", maxSessions, "a positive integer")
+    }
+  }
+
+  // Log Level
+  const logLevel = process.env.OPENSWE_LOG_LEVEL
+  if (logLevel !== undefined) {
+    if (isValidLogLevel(logLevel)) {
+      config.advanced = { logLevel }
+    } else {
+      warnInvalidEnv(
+        "OPENSWE_LOG_LEVEL",
+        logLevel,
+        '"debug", "info", "warn", or "error"'
+      )
+    }
+  }
+
+  // PR Auto Create
+  const prAutoCreate = process.env.OPENSWE_PR_AUTO_CREATE
+  if (prAutoCreate !== undefined) {
+    const parsed = parseBoolean(prAutoCreate)
+    if (parsed !== undefined) {
+      config.pr = { ...config.pr, autoCreate: parsed }
+    } else {
+      warnInvalidEnv("OPENSWE_PR_AUTO_CREATE", prAutoCreate, '"true" or "false"')
+    }
+  }
+
+  // PR Draft
+  const prDraft = process.env.OPENSWE_PR_DRAFT
+  if (prDraft !== undefined) {
+    const parsed = parseBoolean(prDraft)
+    if (parsed !== undefined) {
+      config.pr = { ...config.pr, draft: parsed }
+    } else {
+      warnInvalidEnv("OPENSWE_PR_DRAFT", prDraft, '"true" or "false"')
+    }
+  }
+
+  return config
+}
