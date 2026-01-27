@@ -43,7 +43,7 @@ export const PHASE_DISPLAY_NAMES: Record<Phase, string> = {
 // ============================================================================
 
 /** Active modal state */
-export type ModalType = "none" | "tasks" | "issues" | "help" | "confirm-delete" | "manual" | "provider"
+export type ModalType = "none" | "tasks" | "issues" | "help" | "confirm-delete" | "manual" | "provider" | "theme"
 
 // ============================================================================
 // Component Props
@@ -149,6 +149,16 @@ export interface ProviderSwitcherModalProps {
   currentBackend: AIBackend
   /** Callback when a provider is selected */
   onSelect: (backend: AIBackend) => void
+  /** Callback when modal is closed */
+  onClose: () => void
+}
+
+/** Props for ThemeSwitcherModal component */
+export interface ThemeSwitcherModalProps {
+  /** Current active theme name */
+  currentTheme: string
+  /** Callback when a theme is selected */
+  onSelect: (themeName: string) => void
   /** Callback when modal is closed */
   onClose: () => void
 }

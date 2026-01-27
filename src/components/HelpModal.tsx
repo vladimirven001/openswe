@@ -40,7 +40,8 @@ const KEY_SECTIONS: KeySection[] = [
   {
     title: "Modals",
     bindings: [
-      { key: "t", description: "Task queue" },
+      { key: "t", description: "Change theme" },
+      { key: "a", description: "AI Provider" },
       { key: "i", description: "Issue selector" },
       { key: "?", description: "This help" },
       { key: "Esc", description: "Close modal" },

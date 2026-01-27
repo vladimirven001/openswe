@@ -3,3 +3,6 @@ dist/
 .DS_Store
 
 **/.*/
+# OpenSWE
+.openswe/
+.worktrees/

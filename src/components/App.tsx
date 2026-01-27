@@ -31,8 +31,10 @@ import { ConfirmDialog } from "./ConfirmDialog"
 import { IssueSelectorModal } from "./IssueSelectorModal"
 import { ManualSessionModal } from "./ManualSessionModal"
 import { ProviderSwitcherModal } from "./ProviderSwitcherModal"
+import { ThemeSwitcherModal } from "./ThemeSwitcherModal"
 import { deleteSessionWithWorktree } from "./session-utils"
 import { colors } from "./theme"
+import { useTheme } from "../theme"
 import { logger } from "../utils/logger"
 
 /** Refresh interval for polling data (24 fps) */
@@ -41,6 +43,7 @@ const REFRESH_INTERVAL = (1/60) * 1000
 export function App(props: AppProps) {
   const sessionManager = new SessionManager(props.config, props.projectRoot)
   const renderer = useRenderer()
+  const { themeName, setTheme } = useTheme()
 
   // Get provider branding from session manager (reactive)
   const [providerBranding, setProviderBranding] = createSignal<ProviderBranding>(
@@ -353,6 +356,10 @@ export function App(props: AppProps) {
         setActiveModal("provider")
         break
 
+      case "t":
+        setActiveModal("theme")
+        break
+
       // Quit
       case "q":
         renderer.destroy()
@@ -382,6 +389,22 @@ export function App(props: AppProps) {
       await saveGlobalConfig({ ai: { backend } })
     } catch (error) {
       logger.error("Failed to save provider preference:", error)
+    }
+  }
+
+  // ============================================================================
+  // Theme Change Handler
+  // ============================================================================
+
+  const handleThemeChange = async (name: string) => {
+    setTheme(name)
+    setActiveModal("none")
+
+    // Persist to config file
+    try {
+      await saveGlobalConfig({ ui: { theme: name } })
+    } catch (error) {
+      logger.error("Failed to save theme preference:", error)
     }
   }
 
@@ -485,6 +508,14 @@ export function App(props: AppProps) {
         <ProviderSwitcherModal
           currentBackend={props.config.ai.backend}
           onSelect={handleProviderChange}
+          onClose={() => setActiveModal("none")}
+        />
+      </Show>
+
+      <Show when={activeModal() === "theme"}>
+        <ThemeSwitcherModal
+          currentTheme={themeName()}
+          onSelect={handleThemeChange}
           onClose={() => setActiveModal("none")}
         />
       </Show>

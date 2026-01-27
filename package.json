@@ -1,10 +1,22 @@
 {
-  "name": "openswe",
+  "name": "@vladimirven/openswe",
   "version": "0.1.0",
-  "type": "module",
   "private": true,
+  "description": "AI coding agent (opencode, claude code) orchestration tool for tackling github issues",
+  "homepage": "https://github.com/vladimirven001/openswe#readme",
+  "bugs": {
+    "url": "https://github.com/vladimirven001/openswe/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladimirven001/openswe.git"
+  },
+  "license": "ISC",
+  "author": "vladimirven",
+  "type": "module",
+  "main": "src/index.js",
   "bin": {
-    "openswe": "./src/index.ts"
+    "openswe": "src/index.ts"
   },
   "scripts": {
     "dev": "bun run src/index.ts",
