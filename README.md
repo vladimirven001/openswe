@@ -1,14 +1,15 @@
-# OpenSWE
+# openswe
 
-OpenSWE is an AI-powered software engineering orchestration tool built as a TUI (terminal user interface). It uses Bun for runtime and SQLite for state, and relies on GitHub CLI for repository workflows.
+openswe is an AI coding agent (opencode, claude code) orchestration tool. It connects to github, fetches open issues, and starts working on them for you.
 
 ## Requirements
 
 - Bun (runtime)
 - Zig (required to build OpenTUI native dependency)
+- tmux (session management)
 - Git
 - GitHub CLI (`gh`) with an authenticated account
-- macOS or Linux (PTY/TUI dependencies assume a POSIX environment)
+- macOS or Linux (TUI dependencies assume a POSIX environment)
 
 ## Install
 
@@ -141,7 +142,7 @@ src/
 ├── index.ts              # CLI entry point with yargs
 ├── app.tsx               # Main Solid.js TUI application
 ├── components/           # TUI components (SessionList, Preview, modals)
-├── core/                 # Session state machine, PTY, parser, queue
+├── core/                 # Session state machine, tmux manager, parser, queue
 ├── workspace/            # Detect/init workspace, path utilities
 ├── github/               # gh CLI wrapper, issues, PR creation
 ├── git/                  # Clone, worktree operations

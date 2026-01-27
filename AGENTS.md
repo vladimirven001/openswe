@@ -14,7 +14,7 @@ Guidelines for AI agents working on OpenSWE - an AI-powered software engineering
 | Database | SQLite via bun:sqlite | Built into Bun |
 | Config | TOML via @iarna/toml | snake_case in files, camelCase in code |
 | GitHub | gh CLI (shelled out) | Handles auth |
-| PTY | bun-pty | Post-MVP |
+| Sessions | tmux | Process isolation, attach support |
 
 **Build Requirement**: Zig must be installed (OpenTUI native dependency)
 
@@ -47,7 +47,7 @@ src/
 ├── index.ts              # CLI entry point with yargs
 ├── app.tsx               # Main Solid.js TUI application
 ├── components/           # TUI components (SessionList, Preview, modals)
-├── core/                 # Session state machine, PTY, parser, queue
+├── core/                 # Session state machine, tmux manager, parser, queue
 ├── workspace/            # Detect/init workspace, path utilities
 ├── github/               # gh CLI wrapper, issues, PR creation
 ├── git/                  # Clone, worktree operations
