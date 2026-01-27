@@ -217,7 +217,8 @@ export function parseAnsiLine(line: string): AnsiSegment[] {
 
   // If no segments, return single segment with cleaned text
   if (segments.length === 0) {
-    return [{ text: cleanedLine || " " }]
+    const stripped = cleanedLine.replace(/\x1B\[[0-9;]*m/g, "")
+    return [{ text: stripped || " " }]
   }
 
   return segments

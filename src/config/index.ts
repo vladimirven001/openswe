@@ -18,7 +18,6 @@ export type {
   AIBackend,
   LogLevel,
   AIConfig,
-  DefaultsConfig,
   PRConfig,
   KeybindingsConfig,
   AdvancedConfig,
@@ -93,10 +92,6 @@ function applyCLIOverrides(config: GlobalConfig, cli: CLIOverrides): GlobalConfi
 
   if (cli.backend !== undefined) {
     result.ai.backend = cli.backend
-  }
-
-  if (cli.maxSessions !== undefined) {
-    result.defaults.maxActiveSessions = cli.maxSessions
   }
 
   if (cli.debug === true) {

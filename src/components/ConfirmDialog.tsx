@@ -5,6 +5,7 @@
  */
 
 import { For } from "solid-js"
+import { Footer } from "./Footer"
 import type { ConfirmDialogProps } from "./types"
 import { colors } from "./theme"
 
@@ -16,8 +17,8 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
 
   // Split message into lines
   const messageLines = () => props.message.split("\n")
-  // Height: title(1) + message lines + padding(2) + footer(2 with border) + borders(2)
-  const modalHeight = () => messageLines().length + 7
+  // Height: title(1) + message lines + padding(2) + footer(1) + borders(2)
+  const modalHeight = () => messageLines().length + 6
 
   return (
     <box
@@ -69,22 +70,13 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
         </box>
 
         {/* Footer with action hints */}
-        <box
-          height={1}
-          justifyContent="center"
-          borderStyle="single"
-          borderColor={colors.border.primary}
-          gap={4}
-        >
-          <box flexDirection="row" gap={1}>
-            <text fg={colors.accent.success}>[Enter]</text>
-            <text fg={colors.text.muted}>Confirm</text>
-          </box>
-          <box flexDirection="row" gap={1}>
-            <text fg={colors.accent.error}>[Esc]</text>
-            <text fg={colors.text.muted}>Cancel</text>
-          </box>
-        </box>
+        <Footer
+          actions={[
+            { key: "Enter", label: "Confirm" },
+            { key: "Esc", label: "Cancel" },
+          ]}
+          bgColor={colors.bg.primary}
+        />
       </box>
     </box>
   )

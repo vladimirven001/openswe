@@ -6,7 +6,9 @@
 
 import { For } from "solid-js"
 import type { HelpModalProps } from "./types"
+import { Footer } from "./Footer"
 import { colors } from "./theme"
+import { useKeyboard } from "@opentui/solid"
 
 // Bold attribute constant
 const BOLD = 1
@@ -54,6 +56,16 @@ export function HelpModal(props: HelpModalProps) {
   const modalWidth = 44
   const modalHeight = 24
 
+  useKeyboard((event) => {
+    switch (event.name) {
+        case "escape":
+        props.onClose()
+        break
+	}
+  })
+
+
+
   return (
     <box
       position="absolute"
@@ -87,7 +99,7 @@ export function HelpModal(props: HelpModalProps) {
         </box>
 
         {/* Content */}
-        <scrollbox flexDirection="column" flexGrow={1} paddingLeft={2} paddingRight={2}>
+        <box flexDirection="column" flexGrow={1} paddingLeft={2} paddingRight={2} >
           <For each={KEY_SECTIONS}>
             {(section) => (
               <box flexDirection="column" paddingTop={1}>
@@ -114,17 +126,10 @@ export function HelpModal(props: HelpModalProps) {
               </box>
             )}
           </For>
-        </scrollbox>
+        </box>
 
         {/* Footer */}
-        <box
-          height={1}
-          justifyContent="center"
-          borderStyle="single"
-          borderColor={colors.border.primary}
-        >
-          <text fg={colors.text.muted}>Press Esc to close</text>
-        </box>
+        <Footer actions={[{ key: "Esc", label: "Exit" }]} bgColor={colors.bg.primary} />
       </box>
     </box>
   )

@@ -17,7 +17,6 @@ import {
   getProject,
   createProject,
   updateLastOpened,
-  updateMaxSessions,
   projectExists,
   deleteProject,
 } from "./project"
@@ -131,19 +130,8 @@ describe("Project Operations", () => {
     expect(project.id).toBe(1)
     expect(project.repoFullName).toBe("owner/repo")
     expect(project.repoUrl).toBe("git@github.com:owner/repo.git")
-    expect(project.maxActiveSessions).toBeNull()
     expect(project.createdAt).toBeDefined()
     expect(project.lastOpenedAt).toBeDefined()
-  })
-
-  test("createProject with maxActiveSessions", () => {
-    const project = createProject({
-      repoFullName: "owner/repo",
-      repoUrl: "git@github.com:owner/repo.git",
-      maxActiveSessions: 5,
-    })
-
-    expect(project.maxActiveSessions).toBe(5)
   })
 
   test("getProject retrieves created project", () => {
@@ -186,19 +174,6 @@ describe("Project Operations", () => {
 
     const after = getProject()!.lastOpenedAt
     expect(after).not.toBe(before)
-  })
-
-  test("updateMaxSessions updates value", () => {
-    createProject({
-      repoFullName: "owner/repo",
-      repoUrl: "git@github.com:owner/repo.git",
-    })
-
-    updateMaxSessions(10)
-    expect(getProject()!.maxActiveSessions).toBe(10)
-
-    updateMaxSessions(null)
-    expect(getProject()!.maxActiveSessions).toBeNull()
   })
 
   test("deleteProject removes project", () => {
@@ -346,13 +321,13 @@ describe("Session Operations", () => {
 
     const updated = updateSession(session.id, {
       name: "new-name",
-      phase: "coding",
+      phase: "working",
       status: "active",
       tokensUsed: 1000,
     })
 
     expect(updated.name).toBe("new-name")
-    expect(updated.phase).toBe("coding")
+    expect(updated.phase).toBe("working")
     expect(updated.status).toBe("active")
     expect(updated.tokensUsed).toBe(1000)
   })
@@ -364,11 +339,11 @@ describe("Session Operations", () => {
       branchName: "openswe/test-session",
     })
 
-    updateSessionPhase(session.id, "research")
-    expect(getSession(session.id)!.phase).toBe("research")
+    updateSessionPhase(session.id, "planning")
+    expect(getSession(session.id)!.phase).toBe("planning")
 
-    updateSessionPhase(session.id, "coding")
-    expect(getSession(session.id)!.phase).toBe("coding")
+    updateSessionPhase(session.id, "working")
+    expect(getSession(session.id)!.phase).toBe("working")
   })
 
   test("updateSessionStatus with attention reason", () => {

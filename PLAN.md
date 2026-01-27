@@ -123,8 +123,6 @@ model = "claude-sonnet"
 provider = "anthropic"
 [ai.claude]
 model = "opus"
-[defaults]
-max_active_sessions = 5             # Default for new projects
 [pr]
 auto_create = true
 draft = true
@@ -208,7 +206,7 @@ type Phase =
   | 'completed'     // Done
   | 'failed';       // Failed permanently
 type Status =
-  | 'queued'          // Waiting to start (respecting max active limit)
+  | 'queued'          // Waiting to start
   | 'active'          // Currently running
   | 'paused'          // Manually paused by user
   | 'needs_attention' // Waiting for human input
@@ -248,7 +246,6 @@ interface ProjectState {
   worktreesDir: string;            // ".worktrees"
   
   // Optional overrides
-  maxActiveSessions: number | null; // null = use global default
   
   // Timestamps
   createdAt: Date;
@@ -271,9 +268,6 @@ interface GlobalConfig {
     claude: {
       model: string;
     };
-  };
-  defaults: {
-    maxActiveSessions: number;
   };
   pr: {
     autoCreate: boolean;
@@ -305,7 +299,6 @@ CREATE TABLE project (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   repo_full_name TEXT NOT NULL,
   repo_url TEXT NOT NULL,
-  max_active_sessions INTEGER,        -- NULL = use global default
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   last_opened_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -566,9 +559,6 @@ First-Run Wizard (Empty Directory)
 │  ● Opencode (recommended)
 │  ○ Claude Code
 │
-◆  Maximum concurrent sessions? (default: 5)
-│  5
-│
 ◆  Automatically create draft PRs when sessions complete?
 │  ● Yes (recommended)
 │  ○ No
@@ -666,8 +656,6 @@ openswe --status
 # Use specific AI backend (overrides config)
 openswe --backend opencode
 openswe --backend claude
-# Set max concurrent sessions (overrides config)  
-openswe --max-sessions 3
 # Show help
 openswe --help
 openswe -h
@@ -745,7 +733,6 @@ Phase 4: First-Run Wizard
 - [ ] Implement wizard with @clack/prompts (Wizard.tsx)
   - Repo input (for empty dir)
   - AI backend selection
-  - Max sessions setting
   - Auto PR preference
 - [ ] Clone repo if needed
 - [ ] Create .openswe/ directory

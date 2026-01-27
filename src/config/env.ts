@@ -20,15 +20,6 @@ function parseBoolean(val: string): boolean | undefined {
 }
 
 /**
- * Parse a string to positive integer
- */
-function parsePositiveInt(val: string): number | undefined {
-  const num = parseInt(val, 10)
-  if (!isNaN(num) && num > 0) return num
-  return undefined
-}
-
-/**
  * Log a warning for invalid environment variable values
  * Uses console.warn directly to avoid circular dependency with logger
  */
@@ -43,7 +34,6 @@ function warnInvalidEnv(varName: string, value: string, expected: string): void 
  *
  * Supported variables:
  * - OPENSWE_BACKEND: "opencode" | "claude"
- * - OPENSWE_MAX_SESSIONS: positive integer
  * - OPENSWE_LOG_LEVEL: "debug" | "info" | "warn" | "error"
  * - OPENSWE_PR_AUTO_CREATE: "true" | "false"
  * - OPENSWE_PR_DRAFT: "true" | "false"
@@ -58,17 +48,6 @@ export function loadEnvConfig(): PartialConfig {
       config.ai = { backend }
     } else {
       warnInvalidEnv("OPENSWE_BACKEND", backend, '"opencode" or "claude"')
-    }
-  }
-
-  // Max Sessions
-  const maxSessions = process.env.OPENSWE_MAX_SESSIONS
-  if (maxSessions !== undefined) {
-    const parsed = parsePositiveInt(maxSessions)
-    if (parsed !== undefined) {
-      config.defaults = { maxActiveSessions: parsed }
-    } else {
-      warnInvalidEnv("OPENSWE_MAX_SESSIONS", maxSessions, "a positive integer")
     }
   }
 

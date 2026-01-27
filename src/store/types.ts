@@ -12,12 +12,8 @@
 /** Session phases representing the workflow stages */
 export type Phase =
   | "pending"
-  | "initializing"
-  | "research"
   | "planning"
-  | "coding"
-  | "testing"
-  | "pr_creation"
+  | "working"
   | "completed"
   | "failed"
 
@@ -177,8 +173,6 @@ export interface ProjectState {
   repoFullName: string
   /** Git remote URL */
   repoUrl: string
-  /** Maximum active sessions (null = use global default) */
-  maxActiveSessions: number | null
   /** ISO timestamp when project was created */
   createdAt: string
   /** ISO timestamp when project was last opened */
@@ -189,7 +183,6 @@ export interface ProjectState {
 export interface CreateProjectInput {
   repoFullName: string
   repoUrl: string
-  maxActiveSessions?: number
 }
 
 // ============================================================================
@@ -212,12 +205,8 @@ export interface OutputBuffer {
 
 const VALID_PHASES: readonly Phase[] = [
   "pending",
-  "initializing",
-  "research",
   "planning",
-  "coding",
-  "testing",
-  "pr_creation",
+  "working",
   "completed",
   "failed",
 ]

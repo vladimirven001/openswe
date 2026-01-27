@@ -8,7 +8,6 @@
 import {
   promptRepoInput,
   promptAiBackend,
-  promptMaxSessions,
   promptAutoPr,
   promptAdoptRepo,
   promptFetchIssues,
@@ -49,8 +48,6 @@ export interface WizardResult {
   repoFullName?: string
   /** Selected AI backend */
   aiBackend?: AIBackendChoice
-  /** Selected max sessions */
-  maxSessions?: number
   /** Selected auto PR setting */
   autoPr?: boolean
 }
@@ -216,15 +213,12 @@ export async function runEmptyDirectoryWizard(
   await initProject(cwd, { fullName: repoFullName, remoteUrl: repoUrl })
 
   // Save project config
-  const projectConfig = createProjectConfig(repoFullName, repoUrl, {
-    maxActiveSessions: configResult.maxSessions,
-  })
+  const projectConfig = createProjectConfig(repoFullName, repoUrl)
   await saveProjectConfig(cwd, projectConfig)
 
   // Save global config
   const globalConfig: PartialConfig = {
     ai: { backend: configResult.aiBackend },
-    defaults: { maxActiveSessions: configResult.maxSessions },
     pr: { autoCreate: configResult.autoPr },
   }
   await saveGlobalConfig(globalConfig)
@@ -243,7 +237,6 @@ export async function runEmptyDirectoryWizard(
     cancelled: false,
     repoFullName,
     aiBackend: configResult.aiBackend,
-    maxSessions: configResult.maxSessions,
     autoPr: configResult.autoPr,
   }
 }
@@ -330,15 +323,12 @@ export async function runExistingRepoWizard(
   await initProject(cwd, { fullName: repoFullName, remoteUrl: repoUrl })
 
   // Save project config
-  const projectConfig = createProjectConfig(repoFullName, repoUrl, {
-    maxActiveSessions: configResult.maxSessions,
-  })
+  const projectConfig = createProjectConfig(repoFullName, repoUrl)
   await saveProjectConfig(cwd, projectConfig)
 
   // Save global config
   const globalConfig: PartialConfig = {
     ai: { backend: configResult.aiBackend },
-    defaults: { maxActiveSessions: configResult.maxSessions },
     pr: { autoCreate: configResult.autoPr },
   }
   await saveGlobalConfig(globalConfig)
@@ -357,7 +347,6 @@ export async function runExistingRepoWizard(
     cancelled: false,
     repoFullName,
     aiBackend: configResult.aiBackend,
-    maxSessions: configResult.maxSessions,
     autoPr: configResult.autoPr,
   }
 }
@@ -369,7 +358,6 @@ export async function runExistingRepoWizard(
 interface ConfigurationResult {
   cancelled: boolean
   aiBackend?: AIBackendChoice
-  maxSessions?: number
   autoPr?: boolean
 }
 
@@ -383,12 +371,6 @@ async function gatherConfiguration(): Promise<ConfigurationResult> {
     return { cancelled: true }
   }
 
-  // Max sessions
-  const maxSessions = await promptMaxSessions()
-  if (isCancelled(maxSessions)) {
-    return { cancelled: true }
-  }
-
   // Auto PR
   const autoPr = await promptAutoPr()
   if (isCancelled(autoPr)) {
@@ -398,7 +380,6 @@ async function gatherConfiguration(): Promise<ConfigurationResult> {
   return {
     cancelled: false,
     aiBackend: backend,
-    maxSessions,
     autoPr,
   }
 }
@@ -439,7 +420,6 @@ export async function runReconfigureWizard(
 
   const globalConfig: PartialConfig = {
     ai: { backend: configResult.aiBackend },
-    defaults: { maxActiveSessions: configResult.maxSessions },
     pr: { autoCreate: configResult.autoPr },
   }
   await saveGlobalConfig(globalConfig)
@@ -453,7 +433,6 @@ export async function runReconfigureWizard(
     cancelled: false,
     repoFullName,
     aiBackend: configResult.aiBackend,
-    maxSessions: configResult.maxSessions,
     autoPr: configResult.autoPr,
   }
 }

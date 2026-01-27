@@ -68,10 +68,14 @@ export class TmuxManager implements ProcessManager {
     // -d: detached
     // -s: session name
     // -c: working directory
+    // -x: width (default 80 is too small for modern screens)
+    // -y: height (default 24 is too small)
     const createProc = Bun.spawn([
       "tmux", "new-session", 
       "-d", 
       "-s", sessionName, 
+      "-x", "140",
+      "-y", "50",
       "-c", cwd,
       // We start with a shell to ensure env vars are loaded if needed, or just run the command
       fullCommand
@@ -101,6 +105,9 @@ export class TmuxManager implements ProcessManager {
       const err = await new Response(pipeProc.stderr).text()
       logger.warn(`pipe-pane setup failed for ${sessionName}: ${err}`)
     }
+
+    // 2.5 Disable status bar to reclaim vertical space
+    await Bun.spawn(["tmux", "set-option", "-t", sessionName, "status", "off"], { stderr: "ignore" }).exited
 
     // 3. Get PID of the process inside tmux (approximate)
     // tmux list-panes -t session -F "#{pane_pid}"
@@ -148,11 +155,11 @@ export class TmuxManager implements ProcessManager {
 
     const output = await new Response(proc.stdout).text()
 
-    // Get lines, trim trailing empty lines
+    // Get lines
     const lines = output.split("\n")
-    while (lines.length > 0 && lines[lines.length - 1]?.trim() === "") {
-      lines.pop()
-    }
+    // Note: We used to trim trailing empty lines here, but that causes the
+    // preview to look "short" when the terminal has empty space at the bottom.
+    // We now preserve all lines to show the full terminal height.
 
     return {
       lines,
@@ -188,5 +195,11 @@ export class TmuxManager implements ProcessManager {
 
   getAttachCommand(id: string): string[] {
     return ["tmux", "attach-session", "-t", this.getSessionName(id)]
+  }
+
+  async resize(id: string, cols: number, rows: number): Promise<void> {
+    const sessionName = this.getSessionName(id)
+    // resize-window sets the size of the window (and thus the detached session)
+    await Bun.spawn(["tmux", "resize-window", "-t", sessionName, "-x", cols.toString(), "-y", rows.toString()], { stderr: "ignore" }).exited
   }
 }

@@ -34,11 +34,6 @@ export interface AIConfig {
   claude: ClaudeConfig
 }
 
-/** Default behavior configuration */
-export interface DefaultsConfig {
-  maxActiveSessions: number
-}
-
 /** Pull request automation configuration */
 export interface PRConfig {
   autoCreate: boolean
@@ -81,7 +76,6 @@ export interface UIConfig {
 /** Complete global configuration */
 export interface GlobalConfig {
   ai: AIConfig
-  defaults: DefaultsConfig
   pr: PRConfig
   keybindings: KeybindingsConfig
   advanced: AdvancedConfig
@@ -103,7 +97,6 @@ export type PartialConfig = DeepPartial<GlobalConfig>
 /** CLI flags that can override configuration */
 export interface CLIOverrides {
   backend?: AIBackend
-  maxSessions?: number
   debug?: boolean
 }
 
@@ -129,13 +122,6 @@ export function isValidBackend(val: unknown): val is AIBackend {
  */
 export function isValidLogLevel(val: unknown): val is LogLevel {
   return typeof val === "string" && VALID_LOG_LEVELS.includes(val as LogLevel)
-}
-
-/**
- * Check if a value is a valid positive integer
- */
-export function isValidPositiveInt(val: unknown): val is number {
-  return typeof val === "number" && Number.isInteger(val) && val > 0
 }
 
 /**

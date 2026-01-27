@@ -1,21 +1,17 @@
-/**
- * IssueSelectorModal component - Multi-select issue picker
- *
- * Fetches GitHub issues and allows selecting multiple to create sessions.
- */
-
-import { createSignal, onMount, For, Show } from "solid-js"
+import { createSignal, onMount, For, Show, createEffect, onCleanup } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import type { IssueSelectorModalProps } from "./types"
 import type { Session } from "../store"
 import { fetchIssues, formatRelativeTime, type GitHubIssue, type IssueState } from "../github"
 import { createSessionFromIssue, findNextAvailableWorktreeName } from "./session-utils"
 import { colors, borders } from "./theme"
+import { Footer } from "./Footer"
 import { logger } from "../utils/logger"
 
 // Bold attribute constant
 const BOLD = 1
-const ITEMS_PER_PAGE = 6
+const ITEMS_PER_PAGE = 7 // Increased slightly since rows are more compact
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
 /** State filter options */
 const STATE_FILTERS: IssueState[] = ["open", "closed", "all"]
@@ -33,11 +29,22 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   const [loading, setLoading] = createSignal(true)
   const [error, setError] = createSignal<string | null>(null)
   const [creating, setCreating] = createSignal(false)
+  const [spinnerFrame, setSpinnerFrame] = createSignal(0)
+
+  // Animation effect
+  createEffect(() => {
+    if (creating()) {
+      const interval = setInterval(() => {
+        setSpinnerFrame((f) => (f + 1) % SPINNER_FRAMES.length)
+      }, 80)
+      onCleanup(() => clearInterval(interval))
+    }
+  })
 
   // Conflict resolution state
   const [conflictIssue, setConflictIssue] = createSignal<GitHubIssue | null>(null)
   const [suggestedName, setSuggestedName] = createSignal<string>("")
-  const [conflictChoice, setConflictChoice] = createSignal<0 | 1>(0) // 0: Create new, 1: Overwrite
+  const [conflictChoice, setConflictChoice] = createSignal<0 | 1 | 2>(0) // 0: Use existing, 1: Create new, 2: Overwrite
   const [pendingIndices, setPendingIndices] = createSignal<number[]>([])
   const [successCount, setSuccessCount] = createSignal(0)
   const [createdSessions, setCreatedSessions] = createSignal<Session[]>([])
@@ -104,6 +111,9 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
 
   // Recursive function to process the queue of selected issues
   const processNextIssue = async () => {
+    // Check if cancelled
+    if (!creating()) return
+
     const indices = pendingIndices()
     if (indices.length === 0) {
       // All done
@@ -124,6 +134,9 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
 
     // Try to create session normally first
     const result = await createSessionFromIssue(props.projectRoot, issue)
+    
+    // Check if cancelled during await
+    if (!creating()) return
 
     if (result.success && result.session) {
       setSuccessCount((c) => c + 1)
@@ -138,10 +151,13 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
         // Find suggested name
         const suggestion = await findNextAvailableWorktreeName(props.projectRoot, issue.number)
         
+        // Check if cancelled during await
+        if (!creating()) return
+
         // Pause and show conflict UI
         setConflictIssue(issue)
         setSuggestedName(suggestion)
-        setConflictChoice(0) // Default to "Create new"
+        setConflictChoice(0) // Default to "Continue"
         // Don't remove from queue yet, we'll process it after resolution
       } else {
         // Other error, just log and continue
@@ -167,9 +183,12 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     
     // Create with chosen strategy
     const result = await createSessionFromIssue(props.projectRoot, issue, {
-      worktreeNameOverride: choice === 0 ? suggestion : undefined,
-      overwrite: choice === 1
+      	worktreeNameOverride: choice === 1 ? suggestion : undefined,
+      	overwriteWorktreeChoice: choice // Maps directly to OverwriteWorktreeChoice enum
     })
+    
+    // Check if cancelled during await
+    if (!creating()) return
 
     if (result.success && result.session) {
       setSuccessCount((c) => c + 1)
@@ -241,12 +260,16 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
       switch (event.name) {
         case "up":
         case "k":
-          setConflictChoice(0)
-          break
+			if (conflictChoice() != 0) {
+          		setConflictChoice((conflictChoice() - 1) as 0 | 1 | 2)
+			}
+          	break
         case "down":
         case "j":
-          setConflictChoice(1)
-          break
+			if (conflictChoice() != 2) {
+          		setConflictChoice((conflictChoice() + 1) as 0 | 1 | 2)
+			}
+          	break
         case "enter":
         case "return":
           resolveConflict()
@@ -262,6 +285,20 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     }
 
     const issueList = issues()
+    
+    // Allow Escape to cancel creation or close modal
+    if (event.name === "escape") {
+      if (creating()) {
+        // Cancel creation
+        setPendingIndices([])
+        setCreating(false)
+        setConflictIssue(null)
+      } else {
+        props.onClose()
+      }
+      return
+    }
+
     if (loading() || creating()) return
 
     switch (event.name) {
@@ -301,10 +338,6 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
         startCreation()
         break
 
-      case "escape":
-        props.onClose()
-        break
-
       case "a":
         // Select all
         if (issueList.length > 0) {
@@ -335,18 +368,18 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
 
   const formatLabels = (labels: { name: string }[]): string => {
     if (labels.length === 0) return ""
-    const names = labels.slice(0, 3).map((l) => l.name)
-    if (labels.length > 3) {
-      names.push(`+${labels.length - 3}`)
+    const names = labels.slice(0, 2).map((l) => `[${l.name}]`)
+    if (labels.length > 2) {
+      names.push(`+${labels.length - 2}`)
     }
-    return names.join(", ")
+    return names.join(" ")
   }
 
   // ============================================================================
   // Render
   // ============================================================================
 
-  const modalWidth = 70
+  const modalWidth = 80
   const modalHeight = 24
   const selectedCount = () => selectedIndices().size
 
@@ -373,38 +406,39 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
         <Show when={!!conflictIssue()} fallback={
           // Standard Issue List View
           <>
-            {/* Header */}
-            <box height={1} paddingLeft={1} paddingRight={1} justifyContent="space-between">
-              <text fg={colors.text.primary} attributes={BOLD}>
-                Select Issues
-              </text>
-              <text fg={colors.text.muted}>
-                {props.ownerRepo}
-              </text>
-            </box>
-
-            {/* Filter bar */}
-            <box height={1} paddingLeft={1} paddingRight={1} gap={2}>
-              <text fg={colors.text.secondary}>Filter:</text>
-              <For each={STATE_FILTERS}>
-                {(state) => (
-                  <text
-                    fg={stateFilter() === state ? colors.accent.primary : colors.text.muted}
-                    attributes={stateFilter() === state ? BOLD : 0}
-                  >
-                    {state}
-                  </text>
-                )}
-              </For>
-              <text fg={colors.text.muted}>[Tab to cycle]</text>
+            {/* Header with Tabs */}
+            <box 
+              height={1} 
+              paddingLeft={1} 
+              paddingRight={1} 
+              justifyContent="space-between"
+              backgroundColor={colors.bg.secondary}
+            >
+              <box flexDirection="row" flexGrow={1} overflow="hidden" marginRight={2}>
+                 <text fg={colors.text.primary} attributes={BOLD}>
+                   {props.ownerRepo}
+                 </text>
+              </box>
+              
+              {/* Filter Tabs */}
+              <box flexDirection="row" gap={1}>
+                <For each={STATE_FILTERS}>
+                  {(state) => (
+                    <text
+                      fg={stateFilter() === state ? colors.accent.primary : colors.text.muted}
+                      attributes={stateFilter() === state ? BOLD : 0}
+                    >
+                      {stateFilter() === state ? `[ ${state} ]` : `  ${state}  `}
+                    </text>
+                  )}
+                </For>
+              </box>
             </box>
 
             {/* Content area */}
             <box
               flexDirection="column"
               flexGrow={1}
-              paddingLeft={1}
-              paddingRight={1}
               paddingTop={1}
               overflow="hidden"
             >
@@ -438,41 +472,68 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
                       const isFocused = () => focusedIndex() === index()
                       const isSelected = () => selectedIndices().has(index())
 
+                      const textColor = () => isFocused() ? colors.text.primary : colors.text.secondary
+                      const mutedColor = () => isFocused() ? colors.text.primary : colors.text.muted
+
                       return (
-                        <box flexDirection="column" height={2} backgroundColor={colors.bg.secondary}>
-                          {/* Issue line */}
-                          <box flexDirection="row" gap={1}>
-                            {/* Selection indicator */}
-                            <box width={4}>
-                              <text fg={isSelected() ? colors.accent.primary : colors.text.muted}>
-                                {isSelected() ? "[✓]" : "[ ]"}
-                              </text>
-                            </box>
+                        <box 
+                          flexDirection="row" 
+                          height={1} // Single line rows
+                          backgroundColor={isFocused() ? colors.bg.cardSelected : undefined}
+                          paddingLeft={0}
+                          paddingRight={1}
+                          alignItems="center"
+                          overflow="hidden"
+                        >
+                          {/* Focus Indicator */}
+                          <box width={2}>
+                            <text fg={colors.accent.primary}>
+                              {isFocused() ? "▍" : " "}
+                            </text>
+                          </box>
 
-                            {/* Issue number */}
-                            <box width={8}>
-                              <text fg={isFocused() ? colors.accent.primary : colors.text.secondary}>
-                                {`#${issue.number}`.padEnd(8)}
-                              </text>
-                            </box>
+                          {/* Selection Checkbox */}
+                          <box width={4}>
+                            <text 
+                              fg={isSelected() 
+                                ? (isFocused() ? colors.text.primary : colors.accent.success) 
+                                : mutedColor()
+                              } 
+                              attributes={isSelected() ? BOLD : 0}
+                            >
+                              {isSelected() ? "[✓]" : "[ ]"}
+                            </text>
+                          </box>
 
-                            {/* Issue title */}
+                          {/* Issue ID (Fixed width, right alignedish) */}
+                          <box width={6}>
+                            <text fg={textColor()}>
+                              {`#${issue.number}`.padEnd(5)}
+                            </text>
+                          </box>
+
+                          {/* Title (Flex) */}
+                          <box flexGrow={1} marginRight={2} overflow="hidden">
                             <text
                               fg={isFocused() ? colors.text.primary : colors.text.secondary}
                               attributes={isFocused() ? BOLD : 0}
                             >
-                              {truncate(issue.title, 40)}
+                              {truncate(issue.title, 100)}
                             </text>
                           </box>
 
-                          {/* Labels and time */}
-                          <box flexDirection="row" gap={2} paddingLeft={12}>
-                            <Show when={issue.labels.length > 0}>
-                              <text fg={colors.text.muted}>
-                                {formatLabels(issue.labels)}
-                              </text>
-                            </Show>
-                            <text fg={colors.text.muted}>
+                          {/* Labels (Variable) */}
+                          <box width={20} overflow="hidden">
+                             <Show when={issue.labels.length > 0}>
+                                <text fg={mutedColor()}>
+                                  {formatLabels(issue.labels)}
+                                </text>
+                              </Show>
+                          </box>
+
+                          {/* Time (Right aligned) */}
+                          <box width={12} justifyContent="flex-end">
+                            <text fg={mutedColor()}>
                               {formatRelativeTime(issue.updatedAt)}
                             </text>
                           </box>
@@ -486,88 +547,94 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
 
             {/* Creating indicator */}
             <Show when={creating()}>
-              <box height={1} justifyContent="center">
+              <box height={1} flexDirection="row" justifyContent="center" paddingBottom={1} gap={1}>
+                <text fg={colors.accent.primary}>{SPINNER_FRAMES[spinnerFrame()]}</text>
                 <text fg={colors.accent.primary}>Creating sessions...</text>
               </box>
             </Show>
 
-            {/* Separator */}
-            <box height={1} paddingLeft={1} paddingRight={1}>
-              <text fg={colors.border.primary}>
-                {borders.panel.horizontal.repeat(modalWidth - 2)}
-              </text>
-            </box>
-
             {/* Footer */}
-            <box
-              height={1}
-              justifyContent="center"
-              paddingLeft={1}
-              paddingRight={1}
-              gap={2}
-            >
-              <text fg={colors.text.muted}>[Space] Toggle</text>
-              <text fg={colors.text.muted}>[a] All</text>
-              <Show when={selectedCount() > 0}>
-                <text fg={colors.accent.primary}>[Enter] Create ({selectedCount()})</text>
-              </Show>
-              <Show when={selectedCount() === 0}>
-                <text fg={issues().length > 0 ? colors.accent.primary : colors.text.muted}>[Enter] Create</text>
-              </Show>
-              <text fg={colors.text.muted}>[Esc] Close</text>
-            </box>
+            <Footer
+              bgColor={colors.bg.primary}
+              actions={[
+                { key: "Space", label: "Toggle" },
+                { key: "a", label: "All" },
+                { key: "Tab", label: "Filter" },
+                ...(selectedCount() > 0 
+                  ? [{ key: "Enter", label: `Create (${selectedCount()})` }]
+                  : [{ key: "Enter", label: "Create" }]
+                ),
+                { key: "Esc", label: "Close" },
+              ]}
+            />
           </>
         }>
           {/* Conflict Resolution View */}
-          <box flexDirection="column" flexGrow={1} padding={2} justifyContent="center" alignItems="center">
-            <text fg={colors.accent.error} attributes={BOLD}>Worktree Conflict</text>
-            
-            <box height={1} />
-            
-            <text fg={colors.text.primary}>
-              Worktree for issue #{conflictIssue()?.number} already exists.
-            </text>
-            <text fg={colors.text.secondary}>
-              Please select an action:
-            </text>
-            
-            <box height={2} />
-            
-            {/* Options */}
-            <box flexDirection="column" gap={1} width={50}>
-              {/* Create new option */}
-              <box flexDirection="row" gap={1}>
-                <text fg={conflictChoice() === 0 ? colors.accent.primary : colors.text.muted}>
-                  {conflictChoice() === 0 ? "●" : "○"}
-                </text>
-                <text 
-                  fg={conflictChoice() === 0 ? colors.text.primary : colors.text.secondary}
-                  attributes={conflictChoice() === 0 ? BOLD : 0}
-                >
-                  Create new worktree ({suggestedName()})
-                </text>
-              </box>
+          <box flexDirection="column" width="100%" height="100%">
+            <box flexDirection="column" flexGrow={1} padding={2} justifyContent="center" alignItems="center">
+              <text fg={colors.accent.warning} attributes={BOLD}>Worktree Conflict</text>
               
-              {/* Overwrite option */}
-              <box flexDirection="row" gap={1}>
-                <text fg={conflictChoice() === 1 ? colors.accent.primary : colors.text.muted}>
-                  {conflictChoice() === 1 ? "●" : "○"}
-                </text>
-                <text 
-                  fg={conflictChoice() === 1 ? colors.text.primary : colors.text.secondary}
-                  attributes={conflictChoice() === 1 ? BOLD : 0}
-                >
-                  Overwrite worktree
-                </text>
+              <box height={1} />
+              
+              <text fg={colors.text.primary}>
+                Worktree for issue #{conflictIssue()?.number} already exists.
+              </text>
+              <text fg={colors.text.secondary}>
+                Please select an action:
+              </text>
+              
+              <box height={2} />
+              
+              {/* Options */}
+              <box flexDirection="column" gap={1} width={50}>
+			  {/* Continue worktree option*/}
+                <box flexDirection="row" gap={1}>
+                  <text fg={conflictChoice() === 0 ? colors.accent.primary : colors.text.muted}>
+                    {conflictChoice() === 0 ? "●" : "○"}
+                  </text>
+                  <text 
+                    fg={conflictChoice() === 0 ? colors.text.primary : colors.text.secondary}
+                    attributes={conflictChoice() === 0 ? BOLD : 0}
+                  >
+                    Continue with existing worktree
+                  </text>
+                </box>
+
+                {/* Create new option */}
+                <box flexDirection="row" gap={1}>
+                  <text fg={conflictChoice() === 1 ? colors.accent.primary : colors.text.muted}>
+                    {conflictChoice() === 1 ? "●" : "○"}
+                  </text>
+                  <text 
+                    fg={conflictChoice() === 1 ? colors.text.primary : colors.text.secondary}
+                    attributes={conflictChoice() === 1 ? BOLD : 0}
+                  >
+                    Create new worktree ({suggestedName()})
+                  </text>
+                </box>
+                
+                {/* Overwrite option */}
+                <box flexDirection="row" gap={1}>
+                  <text fg={conflictChoice() === 2 ? colors.accent.primary : colors.text.muted}>
+                    {conflictChoice() === 2 ? "●" : "○"}
+                  </text>
+                  <text 
+                    fg={conflictChoice() === 2 ? colors.text.primary : colors.text.secondary}
+                    attributes={conflictChoice() === 2 ? BOLD : 0}
+                  >
+                    Overwrite worktree
+                  </text>
+                </box>
               </box>
             </box>
             
-            <box height={2} />
-            
-            <box flexDirection="row" gap={2}>
-              <text fg={colors.accent.primary}>[Enter] Confirm</text>
-              <text fg={colors.text.muted}>[Esc] Cancel</text>
-            </box>
+            <Footer
+              bgColor={colors.bg.primary}
+              actions={[
+                { key: "Enter", label: "Confirm" },
+                { key: "Esc", label: "Cancel" },
+              ]}
+            />
           </box>
         </Show>
       </box>

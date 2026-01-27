@@ -9,7 +9,6 @@ export {
   // Prompt functions
   promptRepoInput,
   promptAiBackend,
-  promptMaxSessions,
   promptAutoPr,
   promptAdoptRepo,
   // Utility functions

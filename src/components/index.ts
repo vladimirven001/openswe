@@ -19,7 +19,6 @@ export { ConfirmDialog } from "./ConfirmDialog"
 export { TaskQueueModal } from "./TaskQueueModal"
 export { ManualSessionModal } from "./ManualSessionModal"
 export { SessionTerminal } from "./SessionTerminal"
-export { ActivityTimeline } from "./ActivityTimeline"
 
 // ============================================================================
 // Types
@@ -39,15 +38,12 @@ export type {
   PendingAction,
   ModalType,
   ProjectInfo,
-  ActivityEvent,
-  ActivityEventType,
 } from "./types"
 
 export {
   STATUS_ICONS,
   PHASE_ORDER,
   PHASE_DISPLAY_NAMES,
-  ACTIVITY_ICONS,
   getPhaseProgress,
   generateProgressBar,
 } from "./types"

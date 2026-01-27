@@ -10,6 +10,7 @@ export type ParsedEventType =
   | "blocker"
   | "question"
   | "permission"
+  | "working" // New event type
   | "raw"
 
 export interface ParsedEvent {
@@ -18,21 +19,44 @@ export interface ParsedEvent {
   line: string
 }
 
-const PHASE_REGEX = /\[?OPENSWE:PHASE:([\w-]+)\]?/i
+// const PHASE_REGEX = /\[?OPENSWE:PHASE:([\w-]+)\]?/i // Removed
 const DONE_REGEX = /\[?OPENSWE:DONE\]?/i
 const BLOCKER_REGEX = /\[?OPENSWE:BLOCKER:([^\]]+?)\]?/i
+const WORKING_REGEX = /(?:starting|begin|entering).+(?:implementation|coding|execution)|(?:mode|status):\s*(?:implement|coding)/i
 
 const QUESTION_PREFIX_REGEX = /^\s*(Question:|Q:)\s*/i
 const PERMISSION_PREFIX_REGEX = /^\s*(Permission:|Perm:)\s*/i
 const PERMISSION_INLINE_REGEX = /\bRun `[^`]+`\?/i
 
+const TOOL_CALL_REGEX = /\[tool_call:\s*(\w+)/i
+
 /**
  * Parse a single output line for known markers
  */
 export function parseOutputLine(line: string): ParsedEvent | null {
-  const phaseMatch = line.match(PHASE_REGEX)
-  if (phaseMatch) {
-    return { type: "phase", payload: phaseMatch[1], line }
+  // Implicitly detect working phase via keywords
+  if (WORKING_REGEX.test(line)) {
+    return { type: "working", line }
+  }
+
+  // Detect tool calls for phase transitions and human interaction
+  const toolMatch = line.match(TOOL_CALL_REGEX)
+  if (toolMatch && toolMatch[1]) {
+    const toolName = toolMatch[1].toLowerCase()
+    
+    // writing/editing = working (Build) phase
+    if (toolName === "edit" || toolName === "write") {
+      return { type: "working", line }
+    }
+
+    // question = human input
+    if (toolName === "question" || toolName === "ask_user") {
+      return { 
+        type: "question", 
+        payload: "User input requested via tool", 
+        line 
+      }
+    }
   }
 
   if (DONE_REGEX.test(line)) {

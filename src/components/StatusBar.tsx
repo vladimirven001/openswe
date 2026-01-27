@@ -8,6 +8,7 @@
 
 import { Show, For } from "solid-js"
 import type { StatusBarProps } from "./types"
+import { Footer } from "./Footer"
 import { colors, keybindings } from "./theme"
 
 // Bold attribute constant (bit 0 in text attributes)
@@ -71,35 +72,14 @@ function HeaderBar(props: {
 }
 
 function FooterBar() {
-  const hints = [
-    { key: keybindings.navigate, action: "Navigate" },
-    { key: keybindings.newSession, action: "New" },
-    { key: keybindings.tasks, action: "Tasks" },
-    { key: keybindings.issues, action: "Issues" },
-    { key: keybindings.help, action: "Help" },
-    { key: keybindings.quit, action: "Quit" },
+  const actions = [
+    { key: keybindings.navigate, label: "Navigate" },
+    { key: keybindings.newSession, label: "New" },
+    { key: keybindings.tasks, label: "Tasks" },
+    { key: keybindings.issues, label: "Issues" },
+    { key: keybindings.help, label: "Help" },
+    { key: keybindings.quit, label: "Quit" },
   ]
 
-  return (
-    <box
-      flexDirection="row"
-      width="100%"
-      height={1}
-      backgroundColor={colors.bg.secondary}
-      paddingLeft={1}
-      paddingRight={1}
-      gap={2}
-    >
-      <For each={hints}>
-        {(hint) => (
-          <box flexDirection="row" gap={1}>
-            <text fg={colors.accent.primary} attributes={BOLD}>
-              {hint.key}
-            </text>
-            <text fg={colors.text.secondary}>{hint.action}</text>
-          </box>
-        )}
-      </For>
-    </box>
-  )
+  return <Footer actions={actions} />
 }

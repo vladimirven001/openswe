@@ -11,6 +11,7 @@ import type { HumanTask, TaskType, TaskPriority } from "../store"
 import { getUnresolvedTasks } from "../store"
 import type { TaskQueueModalProps } from "./types"
 import { colors, borders } from "./theme"
+import { Footer } from "./Footer"
 import { formatRelativeTime } from "../utils/format"
 
 // Bold attribute constant
@@ -81,7 +82,7 @@ function truncate(text: string, maxLength: number): string {
 export function TaskQueueModal(props: TaskQueueModalProps) {
   const modalWidth = 70
   const modalHeight = 22
-  const listHeight = modalHeight - 6 // Account for header(1), separator(1), footer(2 with separator), border(2)
+  const listHeight = modalHeight - 5 // Account for header(1), footer(1), border(2), +1 extra for safety?
 
   // State
   const [tasks, setTasks] = createSignal<HumanTask[]>([])
@@ -335,24 +336,15 @@ export function TaskQueueModal(props: TaskQueueModalProps) {
           </box>
         </box>
 
-        {/* Separator */}
-        <box height={1} paddingLeft={1} paddingRight={1}>
-          <text fg={colors.border.primary}>
-            {borders.panel.horizontal.repeat(modalWidth - 2)}
-          </text>
-        </box>
-
         {/* Footer */}
-        <box
-          height={1}
-          justifyContent="center"
-          paddingLeft={1}
-          paddingRight={1}
-        >
-          <text fg={colors.text.muted}>
-            j/k navigate | Enter jump to session | Esc close
-          </text>
-        </box>
+        <Footer
+          actions={[
+            { key: "j/k", label: "navigate" },
+            { key: "Enter", label: "jump to session" },
+            { key: "Esc", label: "close" },
+          ]}
+          bgColor={colors.bg.primary}
+        />
       </box>
     </box>
   )

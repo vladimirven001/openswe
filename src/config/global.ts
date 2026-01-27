@@ -10,7 +10,7 @@ import { homedir } from "os"
 import { join } from "path"
 import { mkdir } from "fs/promises"
 import type { PartialConfig } from "./types"
-import { isValidBackend, isValidLogLevel, isValidPositiveInt, isBoolean, isNonEmptyString } from "./types"
+import { isValidBackend, isValidLogLevel, isBoolean, isNonEmptyString } from "./types"
 
 // ============================================================================
 // Path Utilities
@@ -48,7 +48,6 @@ export async function configFileExists(): Promise<boolean> {
 
 /** Map of camelCase keys to snake_case TOML keys */
 const CAMEL_TO_SNAKE: Record<string, string> = {
-  maxActiveSessions: "max_active_sessions",
   autoCreate: "auto_create",
   titleTemplate: "title_template",
   bodyTemplate: "body_template",
@@ -150,18 +149,6 @@ function validateParsedConfig(parsed: unknown): PartialConfig {
       const cl = ai.claude as Record<string, unknown>
       config.ai.claude = {}
       if (isNonEmptyString(cl.model)) config.ai.claude.model = cl.model
-    }
-  }
-
-  // Validate defaults section
-  if (raw.defaults && typeof raw.defaults === "object") {
-    const defaults = raw.defaults as Record<string, unknown>
-    config.defaults = {}
-
-    if (isValidPositiveInt(defaults.maxActiveSessions)) {
-      config.defaults.maxActiveSessions = defaults.maxActiveSessions
-    } else if (defaults.maxActiveSessions !== undefined) {
-      warnInvalidConfig("defaults.maxActiveSessions", defaults.maxActiveSessions, "a positive integer")
     }
   }
 

@@ -1,17 +1,15 @@
 /**
  * SessionCard component - displays a single session in the list
  *
- * Layout (4 lines):
- * - Line 1: Status icon + session name
- * - Line 2: Issue # + phase indicator
- * - Line 3: Token count
+ * Layout (1 line):
+ * - Status icon + session name + spacer + phase indicator
  */
 
 import type { SessionCardProps } from "./types"
 import { STATUS_ICONS } from "./types"
 import { PhaseProgress } from "./PhaseProgress"
 import { colors, typography } from "./theme"
-import { truncate, formatTokens } from "../utils/format"
+import { truncate } from "../utils/format"
 
 // Bold attribute constant
 const BOLD = 1
@@ -20,21 +18,13 @@ export function SessionCard(props: SessionCardProps) {
   const statusIcon = () => STATUS_ICONS[props.session.status]
   const statusColor = () => colors.status[props.session.status]
 
+  // Reduced length to accommodate phase on same line
   const truncatedName = () =>
-    truncate(props.session.name, typography.maxSessionNameLength)
-
-  const issueLabel = () => {
-    if (props.session.issueNumber) {
-      return `#${props.session.issueNumber}`
-    }
-    return "No issue"
-  }
-
-  const tokenDisplay = () => formatTokens(props.session.tokensUsed)
+    truncate(props.session.name, typography.maxSessionNameLength - 10)
 
   return (
     <box
-      flexDirection="column"
+      flexDirection="row"
       width="100%"
       paddingLeft={1}
       paddingRight={1}
@@ -46,9 +36,11 @@ export function SessionCard(props: SessionCardProps) {
       borderStyle={props.isSelected ? "rounded" : "single"}
       borderColor={props.isSelected ? colors.accent.primary : colors.border.primary}
       overflow="hidden"
+      justifyContent="space-between"
+      alignItems="center"
     >
-      {/* Line 1: Status icon + name */}
-      <box flexDirection="row" gap={1} overflow="hidden">
+      {/* Left: Status + Name */}
+      <box flexDirection="row" gap={1} overflow="hidden" flexShrink={1}>
         <text fg={statusColor()} attributes={BOLD}>
           {statusIcon()}
         </text>
@@ -57,18 +49,9 @@ export function SessionCard(props: SessionCardProps) {
         </text>
       </box>
 
-      {/* Line 2: Issue # + phase */}
-      <box flexDirection="row" gap={1} justifyContent="space-between" overflow="hidden">
-        <box width={10}>
-          <text fg={colors.text.secondary}>{issueLabel()}</text>
-        </box>
+      {/* Right: Phase */}
+      <box flexShrink={0} paddingLeft={1}>
         <PhaseProgress phase={props.session.phase} variant="inline" />
-      </box>
-
-      {/* Line 3: Token count */}
-      <box flexDirection="row" gap={1}>
-        <text fg={colors.text.muted}>Tokens:</text>
-        <text fg={colors.text.secondary}>{tokenDisplay()}</text>
       </box>
     </box>
   )

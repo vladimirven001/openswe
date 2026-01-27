@@ -73,41 +73,6 @@ export async function promptAiBackend(): Promise<AIBackendChoice | symbol> {
 }
 
 // ============================================================================
-// Session Configuration
-// ============================================================================
-
-/**
- * Prompt for maximum concurrent sessions
- *
- * @param defaultValue - Default value to show (optional)
- * @returns The selected number or a symbol if cancelled
- */
-export async function promptMaxSessions(defaultValue = 3): Promise<number | symbol> {
-  const sessions = await p.text({
-    message: "Maximum concurrent sessions:",
-    placeholder: String(defaultValue),
-    initialValue: String(defaultValue),
-    validate: (value) => {
-      const num = parseInt(value, 10)
-      if (isNaN(num)) {
-        return "Please enter a valid number"
-      }
-      if (num < 1) {
-        return "Must be at least 1"
-      }
-      if (num > 10) {
-        return "Maximum is 10 concurrent sessions"
-      }
-    },
-  })
-
-  if (typeof sessions === "string") {
-    return parseInt(sessions, 10)
-  }
-  return sessions
-}
-
-// ============================================================================
 // PR Configuration
 // ============================================================================
 

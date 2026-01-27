@@ -20,10 +20,6 @@ export const DEFAULT_CONFIG: GlobalConfig = {
     },
   },
 
-  defaults: {
-    maxActiveSessions: 5,
-  },
-
   pr: {
     autoCreate: true,
     draft: true,

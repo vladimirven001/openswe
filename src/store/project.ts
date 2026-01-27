@@ -16,7 +16,6 @@ interface ProjectRow {
   id: number
   repo_full_name: string
   repo_url: string
-  max_active_sessions: number | null
   created_at: string
   last_opened_at: string
 }
@@ -33,7 +32,6 @@ function rowToProject(row: ProjectRow): ProjectState {
     id: 1,
     repoFullName: row.repo_full_name,
     repoUrl: row.repo_url,
-    maxActiveSessions: row.max_active_sessions,
     createdAt: row.created_at,
     lastOpenedAt: row.last_opened_at,
   }
@@ -75,12 +73,11 @@ export function createProject(data: CreateProjectInput): ProjectState {
   }
 
   db.query(
-    `INSERT INTO project (id, repo_full_name, repo_url, max_active_sessions, created_at, last_opened_at)
-     VALUES (1, ?, ?, ?, ?, ?)`
+    `INSERT INTO project (id, repo_full_name, repo_url, created_at, last_opened_at)
+     VALUES (1, ?, ?, ?, ?)`
   ).run(
     data.repoFullName,
     data.repoUrl,
-    data.maxActiveSessions ?? null,
     now,
     now
   )
@@ -89,7 +86,6 @@ export function createProject(data: CreateProjectInput): ProjectState {
     id: 1,
     repoFullName: data.repoFullName,
     repoUrl: data.repoUrl,
-    maxActiveSessions: data.maxActiveSessions ?? null,
     createdAt: now,
     lastOpenedAt: now,
   }
@@ -103,17 +99,6 @@ export function updateLastOpened(): void {
   const now = nowISO()
 
   db.query("UPDATE project SET last_opened_at = ? WHERE id = 1").run(now)
-}
-
-/**
- * Update the max active sessions setting
- *
- * @param max - New max value (null to use global default)
- */
-export function updateMaxSessions(max: number | null): void {
-  const db = getDatabase()
-
-  db.query("UPDATE project SET max_active_sessions = ? WHERE id = 1").run(max)
 }
 
 /**

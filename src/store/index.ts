@@ -60,7 +60,6 @@ export {
   getProject,
   createProject,
   updateLastOpened,
-  updateMaxSessions,
   projectExists,
   deleteProject,
 } from "./project"
@@ -127,17 +126,3 @@ export {
   clearBuffer,
   deleteBuffer,
 } from "./buffers"
-
-// ============================================================================
-// Activity Operations (In-Memory)
-// ============================================================================
-
-export {
-  getRecentActivities,
-  addActivity,
-  addActivities,
-  clearActivities,
-  hasActivities,
-  getActivityCount,
-  getSessionsWithActivities,
-} from "./activities"

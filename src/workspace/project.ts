@@ -23,8 +23,6 @@ export interface ProjectConfig {
   createdAt: string
   /** ISO timestamp when project was last opened */
   lastOpenedAt: string
-  /** Override for max active sessions (optional, falls back to global config) */
-  maxActiveSessions?: number
 }
 
 /** Project config file name */
@@ -120,7 +118,6 @@ export async function updateLastOpened(projectRoot: string): Promise<void> {
 export function createProjectConfig(
   repoFullName: string,
   repoUrl: string,
-  options?: { maxActiveSessions?: number }
 ): ProjectConfig {
   const now = new Date().toISOString()
   return {
@@ -128,9 +125,6 @@ export function createProjectConfig(
     repoUrl,
     createdAt: now,
     lastOpenedAt: now,
-    ...(options?.maxActiveSessions !== undefined && {
-      maxActiveSessions: options.maxActiveSessions,
-    }),
   }
 }
 

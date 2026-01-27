@@ -44,4 +44,9 @@ export interface ProcessManager {
    * Get the command to attach to this session interactively
    */
   getAttachCommand(id: string): string[]
+
+  /**
+   * Resize the session terminal
+   */
+  resize(id: string, cols: number, rows: number): Promise<void>
 }

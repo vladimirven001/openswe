@@ -22,12 +22,8 @@ export const STATUS_ICONS: Record<Status, string> = {
 /** Ordered list of phases for progress calculation */
 export const PHASE_ORDER: readonly Phase[] = [
   "pending",
-  "initializing",
-  "research",
   "planning",
-  "coding",
-  "testing",
-  "pr_creation",
+  "working",
   "completed",
   "failed",
 ]
@@ -35,13 +31,9 @@ export const PHASE_ORDER: readonly Phase[] = [
 /** Human-readable phase display names */
 export const PHASE_DISPLAY_NAMES: Record<Phase, string> = {
   pending: "Pending",
-  initializing: "Initializing",
-  research: "Research",
   planning: "Planning",
-  coding: "Coding",
-  testing: "Testing",
-  pr_creation: "PR Creation",
-  completed: "Completed",
+  working: "Building",
+  completed: "Done",
   failed: "Failed",
 }
 
@@ -78,8 +70,8 @@ export interface SessionCardProps {
 /** Props for the preview pane */
 export interface PreviewProps {
   session: Session | null
-  activities: ActivityEvent[]
   startedAt?: Date
+  snapshotLines?: string[]
 }
 
 /** Props for the status bar */
@@ -149,50 +141,6 @@ export interface PendingAction {
 }
 
 // ============================================================================
-// Activity Types
-// ============================================================================
-
-/** Activity event types for timeline display */
-export type ActivityEventType =
-  | "session_start"
-  | "file_read"
-  | "file_edit"
-  | "file_write"
-  | "bash"
-  | "search"
-  | "phase"
-  | "thinking"
-  | "question"
-  | "git"
-  | "test"
-  | "error"
-
-/** Activity event for timeline preview */
-export interface ActivityEvent {
-  type: ActivityEventType
-  timestamp: Date
-  title: string
-  detail?: string
-  icon: string
-}
-
-/** Icon mapping for activity types */
-export const ACTIVITY_ICONS: Record<ActivityEventType, string> = {
-  session_start: "S",
-  file_read: "R",
-  file_edit: "E",
-  file_write: "W",
-  bash: "$",
-  search: "/",
-  phase: "#",
-  thinking: "~",
-  question: "?",
-  git: "G",
-  test: "T",
-  error: "X",
-}
-
-// ============================================================================
 // Derived Types
 // ============================================================================
 
@@ -200,7 +148,6 @@ export const ACTIVITY_ICONS: Record<ActivityEventType, string> = {
 export interface ProjectInfo {
   repoFullName: string
   repoUrl: string
-  maxActiveSessions: number | null
 }
 
 // ============================================================================

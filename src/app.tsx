@@ -5,6 +5,7 @@
  */
 
 import { render } from "@opentui/solid"
+import { createCliRenderer } from "@opentui/core"
 import { App } from "./components"
 import { ThemeProvider } from "./theme"
 import type { GlobalConfig } from "./config"
@@ -33,7 +34,6 @@ export async function startTUI(config: GlobalConfig, projectRoot: string) {
       createProject({
         repoFullName: projectConfig.repoFullName,
         repoUrl: projectConfig.repoUrl,
-        maxActiveSessions: projectConfig.maxActiveSessions,
       })
       logger.debug("Initialized project state in database", projectConfig)
     } else {
@@ -61,6 +61,13 @@ export async function startTUI(config: GlobalConfig, projectRoot: string) {
 
   process.stdin.resume()
 
+  const renderer = await createCliRenderer(rendererConfig)
+
+  // Wait for destroy event to know when to exit
+  const exitPromise = new Promise<void>((resolve) => {
+    renderer.on("destroy", () => resolve())
+  })
+
   await render(
     () => (
       <ThemeProvider
@@ -70,6 +77,8 @@ export async function startTUI(config: GlobalConfig, projectRoot: string) {
         <App config={config} projectRoot={projectRoot} />
       </ThemeProvider>
     ),
-    rendererConfig,
+    renderer,
   )
+
+  await exitPromise
 }

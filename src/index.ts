@@ -9,16 +9,18 @@
 // This is needed because bunfig.toml is only read from cwd, not the package directory.
 import "@opentui/solid/preload"
 
+import { join } from "path"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 import { loadConfig, getConfigPath, type GlobalConfig, type AIBackend } from "./config"
-import { logger, setLogLevel } from "./utils/logger"
+import { logger, setLogLevel, initFileLogging } from "./utils/logger"
 import { checkPrerequisites, formatPrerequisiteErrors } from "./utils/prerequisites"
 import { closeDatabase } from "./store"
 import {
   detectWorkspace,
   loadProjectConfig,
   updateLastOpened,
+  getLogsDir,
   type WorkspaceResult,
 } from "./workspace"
 import {
@@ -40,7 +42,6 @@ interface CLIArgs {
   setup?: boolean
   status?: boolean
   backend?: "opencode" | "claude"
-  maxSessions?: number
   debug?: boolean
 }
 
@@ -70,10 +71,6 @@ const argv = await yargs(hideBin(process.argv))
     choices: ["opencode", "claude"] as const,
     description: "AI backend to use",
   })
-  .option("max-sessions", {
-    type: "number",
-    description: "Maximum concurrent sessions",
-  })
   .option("debug", {
     type: "boolean",
     description: "Enable debug logging",
@@ -92,7 +89,6 @@ async function main() {
   // Load configuration with CLI overrides
   const config = await loadConfig({
     backend: argv.backend as AIBackend | undefined,
-    maxSessions: argv.maxSessions,
     debug: argv.debug,
   })
 
@@ -117,6 +113,8 @@ async function main() {
 
   // Handle workspace based on type
   await handleWorkspace(workspace, config, argv)
+
+  exitApp(0)
 }
 
 // ============================================================================
@@ -186,6 +184,10 @@ async function handleExistingProject(
   workspace: WorkspaceResult,
   config: GlobalConfig
 ): Promise<void> {
+  // Initialize file logging
+  const logsDir = getLogsDir(workspace.projectRoot)
+  initFileLogging(join(logsDir, "openswe.log"))
+
   // Check prerequisites before launching TUI
   const prereqResult = await checkPrerequisites()
   if (!prereqResult.success) {
@@ -246,7 +248,6 @@ async function handleExistingRepo(
   // Wizard completed successfully - show summary
   const updatedConfig = await loadConfig({
     backend: args.backend as AIBackend | undefined,
-    maxSessions: args.maxSessions,
     debug: args.debug,
   })
 
@@ -288,7 +289,6 @@ async function handleEmptyDirectory(
   // Wizard completed successfully - show summary
   const updatedConfig = await loadConfig({
     backend: args.backend as AIBackend | undefined,
-    maxSessions: args.maxSessions,
     debug: args.debug,
   })
 
@@ -321,7 +321,6 @@ async function showStatus(config: GlobalConfig, workspace: WorkspaceResult): Pro
   console.log("Configuration:")
   console.log(`  Config file: ${getConfigPath()}`)
   console.log(`  AI Backend: ${config.ai.backend}`)
-  console.log(`  Max Sessions: ${config.defaults.maxActiveSessions}`)
   console.log(`  Log Level: ${config.advanced.logLevel}`)
   console.log("")
   console.log("Workspace:")
@@ -350,7 +349,6 @@ async function showStatus(config: GlobalConfig, workspace: WorkspaceResult): Pro
 function logConfigSummary(config: GlobalConfig): void {
   logger.info("Configuration:")
   logger.info(`  AI Backend: ${config.ai.backend}`)
-  logger.info(`  Max Sessions: ${config.defaults.maxActiveSessions}`)
   logger.info(`  Log Level: ${config.advanced.logLevel}`)
   logger.info(`  Auto PR: ${config.pr.autoCreate} (draft: ${config.pr.draft})`)
 }

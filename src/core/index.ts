@@ -1,6 +1,5 @@
 export { RingBuffer } from "./buffer"
 export { parseOutputLine } from "./parser"
-export { parseActivityFromLine, parseActivitiesFromLines } from "./activity-parser"
 export { PTYManager } from "./pty"
 export { SessionManager } from "./session"
 export { TaskQueueManager } from "./queue"

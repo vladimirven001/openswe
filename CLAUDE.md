@@ -61,7 +61,7 @@ src/
 
 ### Formatting
 - **No semicolons**
-- **2-space indentation**
+- **1-tab indentation**
 - **Double quotes** for strings
 - **Trailing commas** in multiline structures
 - **No emojis** in output, UI strings, or documentation

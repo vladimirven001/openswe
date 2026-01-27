@@ -1,24 +1,28 @@
 /**
- * Preview component - right pane showing session activity timeline
+ * Preview component - right pane showing session terminal output
  *
  * Layout:
  * - Header: Session name + PhaseProgress (full variant)
  * - Separator
- * - Activity Timeline showing recent events
+ * - Terminal Output
  * - Footer: Session duration + attach hint
  */
 
-import { Show, createMemo } from "solid-js"
+import { Show, createMemo, For } from "solid-js"
 import type { PreviewProps } from "./types"
 import type { Session } from "../store"
 import { getUnresolvedTasksBySession } from "../store"
-import { PhaseProgress } from "./PhaseProgress"
-import { ActivityTimeline } from "./ActivityTimeline"
+import { getPhaseProgress } from "./types"
 import { colors } from "./theme"
+import { Footer } from "./Footer"
 import { truncate } from "../utils/format"
+import { parseAnsiLine } from "../utils/ansi-parser"
+
+import { formatTokens } from "../utils/format"
 
 // Bold attribute constant
 const BOLD = 1
+const VERSION = "v0.1.0" // TODO: Get from package.json or config
 
 /**
  * Format duration in human-readable form
@@ -108,89 +112,118 @@ export function Preview(props: PreviewProps) {
       height="100%"
       borderStyle="rounded"
       borderColor={colors.border.primary}
-      title="Preview"
+      title={` Preview [Terminal] `}
     >
       <Show
         when={props.session}
         fallback={<NoSelectionState />}
       >
         {(session) => (
-          <>
-            {/* Header with session info */}
-            <box
-              flexDirection="row"
-              width="100%"
-              paddingLeft={1}
-              paddingRight={1}
-              paddingTop={1}
-              justifyContent="space-between"
-              alignItems="center"
-              overflow="hidden"
-            >
-              <box flexDirection="column" overflow="hidden">
-                <text fg={colors.text.primary} attributes={BOLD}>
-                  {truncate(session().name, 40)}
-                </text>
-                <Show when={session().issueNumber}>
-                  <text fg={colors.text.secondary}>
-                    Issue #{session().issueNumber}
-                  </text>
-                </Show>
-              </box>
-              <PhaseProgress phase={session().phase} variant="full" />
-            </box>
-
-            {/* Status Banner for needs_attention */}
-            <Show when={session().status === "needs_attention"}>
-              <StatusBanner session={session()} />
-            </Show>
-
-            {/* Separator */}
-            <box width="100%" height={1} paddingLeft={1} paddingRight={1} overflow="hidden">
-              <text fg={colors.border.secondary}>
-                {"─".repeat(100)}
-              </text>
-            </box>
-
-            {/* Activity Timeline */}
-            <ActivityTimeline
-              activities={props.activities}
-              maxItems={15}
-            />
-
-            {/* Footer */}
-            <Show when={isActive()}>
-              <box
-                width="100%"
-                height={1}
-                paddingLeft={1}
-                paddingRight={1}
-                overflow="hidden"
-              >
-                <text fg={colors.border.secondary}>
-                  {"─".repeat(100)}
-                </text>
-              </box>
-              <box
+          /* Terminal View - Full Height */
+          <box flexDirection="column" width="100%" height="100%">
+             {/* Header with session info */}
+             <box
                 flexDirection="row"
                 width="100%"
                 paddingLeft={1}
                 paddingRight={1}
-                paddingBottom={1}
+                paddingTop={0}
+                paddingBottom={0}
                 justifyContent="space-between"
-                alignItems="center"
+                alignItems="flex-start"
+                overflow="hidden"
               >
-                <Show when={duration()}>
-                  <text fg={colors.text.muted}>
-                    Running for {duration()}
+                <box flexDirection="column" overflow="hidden" flexGrow={1} marginRight={1}>
+                  <text fg={colors.text.primary} attributes={BOLD}>
+                    {truncate(session().name, 60)}
                   </text>
-                </Show>
-                <text fg={colors.text.secondary}>
-                  Press Enter to attach
+                  <Show when={session().issueNumber}>
+                    <text fg={colors.text.secondary}>
+                      Issue #{session().issueNumber}
+                    </text>
+                  </Show>
+                </box>
+                
+                {/* Right side metadata */}
+                <box flexDirection="column" alignItems="flex-end" marginRight={1}>
+                  <box flexDirection="row" gap={1}>
+                    <text fg={colors.text.muted}>
+                      {session().tokensUsed ? session().tokensUsed.toLocaleString() : "0"}
+                    </text>
+                    <text fg={colors.text.muted}>
+                      {getPhaseProgress(session().phase)}%
+                    </text>
+                    <text fg={colors.text.muted}>($0.00)</text>
+                    <text fg={colors.text.muted}>{VERSION}</text>
+                  </box>
+                </box>
+              </box>
+
+              {/* Status Banner for needs_attention */}
+              <Show when={session().status === "needs_attention"}>
+                <StatusBanner session={session()} />
+              </Show>
+
+              {/* Separator */}
+              <box width="100%" height={1} overflow="hidden">
+                <text fg={colors.border.secondary}>
+                  {"─".repeat(500)}
                 </text>
               </box>
-            </Show>
-          </>
+
+              <box
+                flexDirection="column"
+                flexGrow={1}
+                width="100%"
+                paddingLeft={1}
+                paddingRight={1}
+                paddingTop={0}
+                justifyContent="flex-end"
+                overflow="hidden"
+                backgroundColor="#000000"
+              >
+                <Show 
+                  when={props.session?.status === "active" && props.snapshotLines && props.snapshotLines.length > 0}
+                  fallback={
+                    <box height="100%" justifyContent="center" alignItems="center">
+                      <text fg={colors.text.muted}>Waiting for output...</text>
+                    </box>
+                  }
+                >
+                  <For each={props.snapshotLines}>
+                    {(line) => {
+                      const segments = parseAnsiLine(line)
+                      return (
+                        <box flexDirection="row">
+                          <For each={segments}>
+                            {(segment) => (
+                              <text
+                                fg={segment.fg || colors.text.primary}
+                                bg={segment.bg}
+                                attributes={segment.bold ? BOLD : undefined}
+                              >
+                                {segment.text}
+                              </text>
+                            )}
+                          </For>
+                        </box>
+                      )
+                    }}
+                  </For>
+                </Show>
+              </box>
+
+               {/* Footer */}
+               <Show when={isActive()}>
+                <Footer
+                  actions={[
+                    { key: "Enter", label: "Attach" },
+                    { key: "tmux-prefix+d", label: "Detach" }
+                  ]}
+                  message={duration() ? `Running for ${duration()}` : undefined}
+                />
+              </Show>
+          </box>
         )}
       </Show>
     </box>
@@ -209,7 +242,7 @@ function NoSelectionState() {
     >
       <text fg={colors.text.muted}>No session selected</text>
       <text fg={colors.text.secondary}>
-        Select a session to view its activity
+        Select a session to view terminal output
       </text>
     </box>
   )

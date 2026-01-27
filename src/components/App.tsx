@@ -18,8 +18,6 @@ import {
   updateSessionStatus,
   getSession,
 } from "../store"
-import { getRecentActivities } from "../store/activities"
-import type { ActivityEvent } from "./types"
 import { SessionManager } from "../core"
 import { generateSWEPrompt } from "../prompts"
 import type { AppProps, ModalType, ProjectInfo, PendingAction } from "./types"
@@ -35,8 +33,8 @@ import { deleteSessionWithWorktree } from "./session-utils"
 import { colors } from "./theme"
 import { logger } from "../utils/logger"
 
-/** Refresh interval for polling data (1 second) */
-const REFRESH_INTERVAL = 1000
+/** Refresh interval for polling data (24 fps) */
+const REFRESH_INTERVAL = (1/60) * 1000
 
 export function App(props: AppProps) {
   const sessionManager = new SessionManager(props.config, props.projectRoot)
@@ -50,10 +48,14 @@ export function App(props: AppProps) {
   const [selectedIndex, setSelectedIndex] = createSignal(0)
   const [unresolvedTaskCount, setUnresolvedTaskCount] = createSignal(0)
   const [projectInfo, setProjectInfo] = createSignal<ProjectInfo | null>(null)
-  const [previewActivities, setPreviewActivities] = createSignal<ActivityEvent[]>([])
+  const [snapshotLines, setSnapshotLines] = createSignal<string[]>([])
   const [sessionStartedAt, setSessionStartedAt] = createSignal<Date | undefined>(undefined)
   const [activeModal, setActiveModal] = createSignal<ModalType>("none")
   const [pendingAction, setPendingAction] = createSignal<PendingAction | null>(null)
+  const [isAttaching, setIsAttaching] = createSignal(false)
+  
+  // Terminal size tracking
+  const [termSize, setTermSize] = createSignal({ cols: process.stdout.columns, rows: process.stdout.rows })
 
   // ============================================================================
   // Derived State
@@ -66,6 +68,19 @@ export function App(props: AppProps) {
       return sessionList[index] ?? null
     }
     return null
+  }
+
+  // Calculate optimal terminal size for preview
+  const previewSize = () => {
+    const { cols, rows } = termSize()
+    // Preview is 70% width. Subtract 4 for borders/padding.
+    // Height is full minus header/footer status bars (2 lines) and borders (2 lines)
+    // We use rows - 2 to be aggressive and fill the space, allowing slight scroll if needed
+    // rather than showing a gap.
+    return {
+      cols: Math.max(20, Math.floor(cols * 0.7) - 4),
+      rows: Math.max(10, rows - 2)
+    }
   }
 
   // ============================================================================
@@ -105,7 +120,6 @@ export function App(props: AppProps) {
         setProjectInfo({
           repoFullName: project.repoFullName,
           repoUrl: project.repoUrl,
-          maxActiveSessions: project.maxActiveSessions,
         })
         logger.debug("Loaded project info", project)
       } else {
@@ -114,15 +128,6 @@ export function App(props: AppProps) {
     } catch {
       setProjectInfo(null)
       logger.warn("Failed to load project info")
-    }
-  }
-
-  const loadPreviewActivities = (sessionId: string) => {
-    try {
-      const activities = getRecentActivities(sessionId, 20)
-      setPreviewActivities(activities)
-    } catch {
-      setPreviewActivities([])
     }
   }
 
@@ -149,13 +154,28 @@ export function App(props: AppProps) {
     const previewId = setInterval(() => {
       const session = selectedSession()
       if (session && session.status === "active") {
-        loadPreviewActivities(session.id)
+        sessionManager.getSnapshot(session.id).then(lines => {
+          setSnapshotLines(lines)
+        }).catch(() => setSnapshotLines([]))
+        
+        // Sync terminal size if not currently attaching/attached
+        if (!isAttaching()) {
+          const size = previewSize()
+          sessionManager.resizeSession(session.id, size.cols, size.rows).catch(() => {})
+        }
       }
-    }, 1000)
+    }, REFRESH_INTERVAL)
+
+    // Handle Window Resize
+    const onResize = () => {
+      setTermSize({ cols: process.stdout.columns, rows: process.stdout.rows })
+    }
+    process.on('SIGWINCH', onResize)
 
     onCleanup(() => {
       clearInterval(refreshId)
       clearInterval(previewId)
+      process.off('SIGWINCH', onResize)
     })
   })
 
@@ -163,15 +183,19 @@ export function App(props: AppProps) {
   createEffect(() => {
     const session = selectedSession()
     if (session) {
-      loadPreviewActivities(session.id)
       // Track session start time for duration display
       if (session.status === "active" && session.createdAt) {
         setSessionStartedAt(new Date(session.createdAt))
+        
+        // Resize immediately on selection, but only if not attaching
+        if (!isAttaching()) {
+          const size = previewSize()
+          sessionManager.resizeSession(session.id, size.cols, size.rows).catch(() => {})
+        }
       } else {
         setSessionStartedAt(undefined)
       }
     } else {
-      setPreviewActivities([])
       setSessionStartedAt(undefined)
     }
   })
@@ -272,6 +296,8 @@ export function App(props: AppProps) {
           const session = selectedSession()
           if (!session) return
 
+          setIsAttaching(true)
+
           try {
             // If session needs starting, start it first and await completion
             if (session.status === "queued" || session.status === "paused") {
@@ -285,6 +311,9 @@ export function App(props: AppProps) {
             // Re-fetch session to get updated status after start
             const updatedSession = getSession(session.id)
             if (updatedSession?.status === "active") {
+              // Resize to full terminal size for interactive use
+              await sessionManager.resizeSession(session.id, termSize().cols, termSize().rows)
+              
               const cmd = sessionManager.getAttachCommand(session.id)
 
               // Suspend OpenTUI before yielding terminal to tmux
@@ -295,14 +324,17 @@ export function App(props: AppProps) {
               // Resume OpenTUI - this properly re-establishes terminal state
               renderer.resume()
 
-              // Refresh activities to show latest state after detach
-              loadPreviewActivities(session.id)
+              // Resize back to preview size
+              const size = previewSize()
+              await sessionManager.resizeSession(session.id, size.cols, size.rows)
             }
 
             loadSessions()
           } catch (error) {
             logger.error("Session start/attach failed:", error)
             loadSessions()
+          } finally {
+            setIsAttaching(false)
           }
         })()
         break
@@ -326,7 +358,7 @@ export function App(props: AppProps) {
 
       // Quit
       case "q":
-        process.exit(0)
+        renderer.destroy()
         break
     }
   })
@@ -367,8 +399,8 @@ export function App(props: AppProps) {
         />
         <Preview
           session={selectedSession()}
-          activities={previewActivities()}
           startedAt={sessionStartedAt()}
+          snapshotLines={snapshotLines()}
         />
       </box>
 

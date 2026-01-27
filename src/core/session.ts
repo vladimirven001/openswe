@@ -18,16 +18,15 @@ import {
   isValidPhase,
   getProject,
 } from "../store"
-import { addActivity } from "../store/activities"
 import type { AISessionData } from "../store"
 import type { GlobalConfig } from "../config"
 import { parseOutputLine } from "./parser"
-import { parseActivityFromLine } from "./activity-parser"
 import { TmuxManager } from "./tmux"
 import { TaskQueueManager } from "./queue"
 import { pushBranch, getCommitsAhead, getDefaultBranch } from "../git"
 import { createPR, getExistingPR } from "../github"
 import { logger } from "../utils/logger"
+import { shellQuote } from "../utils/shell"
 import { getSessionLogPath } from "../workspace/paths"
 import { dirname } from "path"
 import { mkdir, open } from "fs/promises"
@@ -145,19 +144,8 @@ export class SessionManager {
     try {
       updateSessionStatus(session.id, "active")
 
-      // Auto-transition to initializing phase
-      updateSessionPhase(session.id, "initializing")
-
-      // Add initial activity event
-        addActivity(session.id, {
-          type: "session_start",
-          timestamp: new Date(),
-          title: "Session started",
-          detail: session.issueNumber
-            ? `Initializing AI for issue #${session.issueNumber}`
-            : `Initializing AI for ${session.name}`,
-          icon: "S",
-        })
+      // Auto-transition to planning phase
+      updateSessionPhase(session.id, "planning")
 
       if (options.aiSessionData !== undefined) {
         setAISessionData(session.id, options.aiSessionData)
@@ -171,7 +159,7 @@ export class SessionManager {
       // workspace/init.ts usually creates .openswe/logs, but let's be safe?
       // For now assume it exists.
 
-      const args = ["--prompt", JSON.stringify(options.prompt)] // JSON stringify prompt to handle newlines/quotes safely in shell
+      const args = ["--model", "opencode/big-pickle", "--agent", "plan", "--prompt", shellQuote(options.prompt)]
       if (options.resumeSessionId) {
         args.push("--session", options.resumeSessionId)
       }
@@ -306,6 +294,13 @@ export class SessionManager {
     return this.processManager.getAttachCommand(sessionId)
   }
 
+  /**
+   * Resize the session terminal
+   */
+  async resizeSession(sessionId: string, cols: number, rows: number): Promise<void> {
+    await this.processManager.resize(sessionId, cols, rows)
+  }
+
   private cleanupSession(sessionId: string) {
     const active = this.activeSessions.get(sessionId)
     if (active) {
@@ -317,24 +312,16 @@ export class SessionManager {
   private handleOutputLine(sessionId: string, line: string): void {
     const normalizedLine = this.normalizeOutputLine(line)
 
-    // Parse activity events for timeline display
-    const activity = parseActivityFromLine(normalizedLine)
-    if (activity) {
-      addActivity(sessionId, activity)
-    }
-
     // Parse protocol events for state management
     const event = parseOutputLine(normalizedLine)
     if (!event) return
 
     switch (event.type) {
-      case "phase":
-        if (event.payload && isValidPhase(event.payload)) {
-          updateSessionPhase(sessionId, event.payload)
-        }
+      case "working":
+        updateSessionPhase(sessionId, "working")
         break
       case "done":
-        updateSessionPhase(sessionId, "pr_creation")
+        updateSessionPhase(sessionId, "completed")
         this.handleSessionCompletion(sessionId).catch((err) => {
           logger.error(`PR creation failed for ${sessionId}:`, err)
         })

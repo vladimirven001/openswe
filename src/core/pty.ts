@@ -46,7 +46,7 @@ export class PTYManager {
   }
 
   spawnSession(options: SpawnOptions): PTYSession {
-    const args = ["--prompt", options.prompt]
+    const args = ["--agent", "plan", "--prompt", options.prompt]
     if (options.resumeSessionId) {
       args.push("--session", options.resumeSessionId)
     }
@@ -55,8 +55,8 @@ export class PTYManager {
     try {
       pty = spawn("opencode", args, {
         name: "xterm-256color",
-        cols: 80,
-        rows: 24,
+        cols: 140,
+        rows: 50,
         cwd: options.worktreePath,
         env: buildEnvironment(),
       })

@@ -17,7 +17,7 @@ export function SessionList(props: SessionListProps) {
   const activeCount = () =>
     props.sessions.filter((s) => s.status === "active").length
 
-  const title = () => `Sessions (${activeCount()}/${totalCount()} active)`
+  const title = () => ` Sessions (${activeCount()}/${totalCount()} active) `
 
   return (
     <box

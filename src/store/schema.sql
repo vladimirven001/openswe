@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS project (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   repo_full_name TEXT NOT NULL,
   repo_url TEXT NOT NULL,
-  max_active_sessions INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   last_opened_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

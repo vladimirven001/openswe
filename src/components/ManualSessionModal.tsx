@@ -8,6 +8,7 @@ import { createSignal, Show } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import type { ManualSessionModalProps } from "./types"
 import { createManualSession } from "./session-utils"
+import { Footer } from "./Footer"
 import { colors } from "./theme"
 import { logger } from "../utils/logger"
 
@@ -24,7 +25,7 @@ export function ManualSessionModal(props: ManualSessionModalProps) {
 
   // Dynamic height based on error/creating state
   const modalHeight = () => {
-    let height = 9 // Base: header(1) + label(1) + input(1) + footer(2 with border) + borders(2) + padding(2)
+    let height = 8 // Base: header(1) + label(1) + input(1) + footer(1) + borders(2) + padding(2)
     if (error()) height += 1
     if (creating()) height += 1
     return height
@@ -146,22 +147,13 @@ export function ManualSessionModal(props: ManualSessionModalProps) {
         </box>
 
         {/* Footer */}
-        <box
-          height={1}
-          justifyContent="center"
-          borderStyle="single"
-          borderColor={colors.border.primary}
-          gap={4}
-        >
-          <box flexDirection="row" gap={1}>
-            <text fg={colors.accent.success}>[Enter]</text>
-            <text fg={colors.text.muted}>Create</text>
-          </box>
-          <box flexDirection="row" gap={1}>
-            <text fg={colors.accent.error}>[Esc]</text>
-            <text fg={colors.text.muted}>Cancel</text>
-          </box>
-        </box>
+        <Footer
+          actions={[
+            { key: "Enter", label: "Create" },
+            { key: "Esc", label: "Cancel" },
+          ]}
+          bgColor={colors.bg.primary}
+        />
       </box>
     </box>
   )
