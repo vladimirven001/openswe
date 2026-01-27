@@ -60,32 +60,6 @@ CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
 CREATE INDEX IF NOT EXISTS idx_sessions_phase ON sessions(phase);
 
 -- ============================================================================
--- Human Tasks Table
--- ============================================================================
-
--- Human tasks require intervention from the user
-CREATE TABLE IF NOT EXISTS human_tasks (
-  id TEXT PRIMARY KEY,
-  session_id TEXT NOT NULL,
-  session_name TEXT NOT NULL,
-  issue_number INTEGER,
-  type TEXT NOT NULL,
-  priority TEXT NOT NULL DEFAULT 'normal',
-  title TEXT NOT NULL,
-  context TEXT,
-  raw_output TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  resolved_at TEXT,
-  FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-);
-
--- Index for querying tasks by session
-CREATE INDEX IF NOT EXISTS idx_tasks_session ON human_tasks(session_id);
-
--- Index for querying unresolved tasks
-CREATE INDEX IF NOT EXISTS idx_tasks_unresolved ON human_tasks(resolved_at) WHERE resolved_at IS NULL;
-
--- ============================================================================
 -- Output Buffers Table
 -- ============================================================================
 

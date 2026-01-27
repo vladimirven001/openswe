@@ -3,7 +3,8 @@
  */
 
 import type { Session, Phase, Status, ProjectState } from "../store"
-import type { GlobalConfig } from "../config"
+import type { GlobalConfig, AIBackend } from "../config"
+import type { ProviderBranding } from "../providers"
 
 // ============================================================================
 // Constants
@@ -42,7 +43,7 @@ export const PHASE_DISPLAY_NAMES: Record<Phase, string> = {
 // ============================================================================
 
 /** Active modal state */
-export type ModalType = "none" | "tasks" | "issues" | "help" | "confirm-delete" | "manual"
+export type ModalType = "none" | "tasks" | "issues" | "help" | "confirm-delete" | "manual" | "provider"
 
 // ============================================================================
 // Component Props
@@ -59,12 +60,14 @@ export interface SessionListProps {
   sessions: Session[]
   selectedIndex: number
   onSelect: (index: number) => void
+  listWidth: number
 }
 
 /** Props for individual session cards */
 export interface SessionCardProps {
   session: Session
   isSelected: boolean
+  availableWidth: number
 }
 
 /** Props for the preview pane */
@@ -72,6 +75,7 @@ export interface PreviewProps {
   session: Session | null
   startedAt?: Date
   snapshotLines?: string[]
+  providerBranding?: ProviderBranding
 }
 
 /** Props for the status bar */
@@ -81,6 +85,8 @@ export interface StatusBarProps {
   repoName?: string
   taskCount?: number
   backend?: string
+  sessionId?: string
+  providerBranding?: ProviderBranding
   // Footer variant props (keybinding hints)
 }
 
@@ -109,6 +115,8 @@ export interface IssueSelectorModalProps {
   ownerRepo: string
   /** Absolute path to the project root */
   projectRoot: string
+  /** Current AI backend */
+  currentBackend: AIBackend
   /** Callback when modal is closed */
   onClose: () => void
   /** Callback when sessions are created - receives created sessions for auto-start */
@@ -119,6 +127,8 @@ export interface IssueSelectorModalProps {
 export interface ManualSessionModalProps {
   /** Absolute path to the project root */
   projectRoot: string
+  /** Current AI backend */
+  currentBackend: AIBackend
   /** Callback when modal is closed */
   onClose: () => void
   /** Callback when sessions are created (for refreshing the list) */
@@ -131,6 +141,16 @@ export interface TaskQueueModalProps {
   onClose: () => void
   /** Callback when user selects a task to jump to its session */
   onJumpToSession: (sessionId: string) => void
+}
+
+/** Props for ProviderSwitcherModal component */
+export interface ProviderSwitcherModalProps {
+  /** Current AI backend */
+  currentBackend: AIBackend
+  /** Callback when a provider is selected */
+  onSelect: (backend: AIBackend) => void
+  /** Callback when modal is closed */
+  onClose: () => void
 }
 
 /** Pending action for confirmation dialogs */

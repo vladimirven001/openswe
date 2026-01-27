@@ -26,17 +26,6 @@ export type Status =
   | "completed"
   | "failed"
 
-/** Types of human tasks that require intervention */
-export type TaskType =
-  | "question"
-  | "permission"
-  | "blocker"
-  | "retry_failed"
-  | "pr_review"
-
-/** Priority levels for human tasks */
-export type TaskPriority = "low" | "normal" | "high" | "critical"
-
 /** Backend session reference for AI integrations */
 export interface AISessionData {
   backend: "opencode" | "claude"
@@ -114,46 +103,8 @@ export interface UpdateSessionInput {
 }
 
 // ============================================================================
-// Human Task Types
+// Human Task Types - REMOVED
 // ============================================================================
-
-/** A human task represents work requiring human intervention */
-export interface HumanTask {
-  /** Unique identifier (UUID) */
-  id: string
-  /** ID of the session this task belongs to */
-  sessionId: string
-  /** Session name (denormalized for display) */
-  sessionName: string
-  /** Issue number (denormalized for display) */
-  issueNumber: number | null
-  /** Type of intervention required */
-  type: TaskType
-  /** Priority level */
-  priority: TaskPriority
-  /** Brief title describing the task */
-  title: string
-  /** Additional context or details */
-  context: string | null
-  /** Raw AI output that triggered the task */
-  rawOutput: string | null
-  /** ISO timestamp when task was created */
-  createdAt: string
-  /** ISO timestamp when task was resolved (null if pending) */
-  resolvedAt: string | null
-}
-
-/** Input for creating a new human task */
-export interface CreateTaskInput {
-  sessionId: string
-  sessionName: string
-  issueNumber?: number
-  type: TaskType
-  priority?: TaskPriority
-  title: string
-  context?: string
-  rawOutput?: string
-}
 
 // ============================================================================
 // Project State Types
@@ -220,21 +171,6 @@ const VALID_STATUSES: readonly Status[] = [
   "failed",
 ]
 
-const VALID_TASK_TYPES: readonly TaskType[] = [
-  "question",
-  "permission",
-  "blocker",
-  "retry_failed",
-  "pr_review",
-]
-
-const VALID_PRIORITIES: readonly TaskPriority[] = [
-  "low",
-  "normal",
-  "high",
-  "critical",
-]
-
 const VALID_AI_BACKENDS = ["opencode", "claude"] as const
 
 /** Check if a value is a valid Phase */
@@ -245,16 +181,6 @@ export function isValidPhase(val: unknown): val is Phase {
 /** Check if a value is a valid Status */
 export function isValidStatus(val: unknown): val is Status {
   return typeof val === "string" && VALID_STATUSES.includes(val as Status)
-}
-
-/** Check if a value is a valid TaskType */
-export function isValidTaskType(val: unknown): val is TaskType {
-  return typeof val === "string" && VALID_TASK_TYPES.includes(val as TaskType)
-}
-
-/** Check if a value is a valid TaskPriority */
-export function isValidTaskPriority(val: unknown): val is TaskPriority {
-  return typeof val === "string" && VALID_PRIORITIES.includes(val as TaskPriority)
 }
 
 /** Check if a value is valid AISessionData */

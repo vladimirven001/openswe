@@ -19,17 +19,18 @@ import {
   getProject,
 } from "../store"
 import type { AISessionData } from "../store"
-import type { GlobalConfig } from "../config"
-import { parseOutputLine } from "./parser"
+import type { GlobalConfig, AIBackend } from "../config"
+import { createParser } from "./parser"
+import type { ParsedEvent } from "./parser"
 import { TmuxManager } from "./tmux"
-import { TaskQueueManager } from "./queue"
 import { pushBranch, getCommitsAhead, getDefaultBranch } from "../git"
 import { createPR, getExistingPR } from "../github"
 import { logger } from "../utils/logger"
-import { shellQuote } from "../utils/shell"
 import { getSessionLogPath } from "../workspace/paths"
 import { dirname } from "path"
 import { mkdir, open } from "fs/promises"
+import { getProvider } from "../providers"
+import type { Provider } from "../providers"
 
 export interface StartSessionOptions {
   sessionId: string
@@ -46,9 +47,10 @@ interface ActiveSession {
 export class SessionManager {
   private config: GlobalConfig
   private processManager: TmuxManager
-  private taskQueue: TaskQueueManager
   private activeSessions: Map<string, ActiveSession>
   private projectRoot: string
+  private provider: Provider
+  private parseOutputLine: (line: string) => ParsedEvent | null
 
   private static readonly ANSI_ESCAPE_REGEX = /\x1b\[[0-9;]*[A-Za-z]/g
   private static readonly ANSI_OSC_REGEX = /\x1b\][^\x07]*(?:\x07|\x1b\\)/g
@@ -56,17 +58,36 @@ export class SessionManager {
   constructor(
     config: GlobalConfig,
     projectRoot: string,
-    processManager?: TmuxManager,
-    taskQueue?: TaskQueueManager
+    processManager?: TmuxManager
   ) {
     this.config = config
     this.projectRoot = projectRoot
     this.processManager = processManager ?? new TmuxManager()
-    this.taskQueue = taskQueue ?? new TaskQueueManager()
     this.activeSessions = new Map()
+
+    // Initialize provider based on config
+    this.provider = getProvider(config.ai.backend)
+    this.parseOutputLine = createParser(this.provider.parserPatterns)
 
     // Start background poller for session health/exit detection
     setInterval(() => this.checkSessionHealth(), 2000)
+  }
+
+  /**
+   * Get the current AI provider
+   */
+  getProvider(): Provider {
+    return this.provider
+  }
+
+  /**
+   * Switch to a different AI provider at runtime
+   * @param backend - The backend to switch to
+   */
+  setProvider(backend: AIBackend): void {
+    this.provider = getProvider(backend)
+    this.parseOutputLine = createParser(this.provider.parserPatterns)
+    this.config.ai.backend = backend
   }
 
   /**
@@ -154,26 +175,32 @@ export class SessionManager {
       const logPath = getSessionLogPath(this.projectRoot, session.id)
       await this.ensureLogFile(logPath)
 
-      // Ensure log dir exists
-      // (Assuming getLogsDir ensures it, or we do it here)
-      // workspace/init.ts usually creates .openswe/logs, but let's be safe?
-      // For now assume it exists.
+      // Use session's backend if available, otherwise fall back to global config
+      const backend = options.aiSessionData?.backend ?? session.aiSessionData?.backend ?? this.config.ai.backend
+      const provider = getProvider(backend)
+      const providerConfig = this.config.ai[backend] as unknown as Record<string, unknown>
 
-      const args = ["--model", "opencode/big-pickle", "--agent", "plan", "--prompt", shellQuote(options.prompt)]
-      if (options.resumeSessionId) {
-        args.push("--session", options.resumeSessionId)
-      }
+      // Build spawn command using the session's provider
+      const spawnCmd = provider.buildSpawnCommand(
+        session,
+        options.prompt,
+        options.resumeSessionId,
+        providerConfig
+      )
 
       // Filter env to remove undefined values
-      const env = Object.fromEntries(
+      const baseEnv = Object.fromEntries(
         Object.entries(process.env).filter(([, v]) => v !== undefined)
       ) as Record<string, string>
+
+      // Merge provider-specific env vars
+      const env = { ...baseEnv, ...spawnCmd.env }
 
       // Spawn tmux session
       const pid = await this.processManager.spawn(
         session.id,
-        "opencode",
-        args,
+        spawnCmd.command,
+        spawnCmd.args,
         session.worktreePath,
         env,
         logPath
@@ -187,7 +214,6 @@ export class SessionManager {
     } catch (error) {
       updateSessionStatus(session.id, "failed")
       logger.error(`Failed to start session ${session.id}:`, error)
-      this.taskQueue.createFromRetryFailed(session.id)
       throw error
     }
   }
@@ -312,8 +338,8 @@ export class SessionManager {
   private handleOutputLine(sessionId: string, line: string): void {
     const normalizedLine = this.normalizeOutputLine(line)
 
-    // Parse protocol events for state management
-    const event = parseOutputLine(normalizedLine)
+    // Parse protocol events for state management using provider-specific patterns
+    const event = this.parseOutputLine(normalizedLine)
     if (!event) return
 
     switch (event.type) {
@@ -325,21 +351,6 @@ export class SessionManager {
         this.handleSessionCompletion(sessionId).catch((err) => {
           logger.error(`PR creation failed for ${sessionId}:`, err)
         })
-        break
-      case "blocker":
-        if (event.payload) {
-          this.taskQueue.createFromBlocker(sessionId, event.payload)
-        }
-        break
-      case "question":
-        if (event.payload) {
-          this.taskQueue.createFromQuestion(sessionId, event.payload)
-        }
-        break
-      case "permission":
-        if (event.payload) {
-          this.taskQueue.createFromPermission(sessionId, event.payload)
-        }
         break
     }
   }
@@ -384,7 +395,6 @@ export class SessionManager {
     const pushResult = await pushBranch(session.worktreePath, session.branchName, true)
     if (!pushResult.success) {
       updateSessionStatus(sessionId, "needs_attention", `Push failed: ${pushResult.error}`)
-      this.taskQueue.createFromBlocker(sessionId, `Failed to push branch: ${pushResult.error}`)
       return
     }
 
@@ -392,7 +402,6 @@ export class SessionManager {
     if (existingPR) {
       setPrUrl(sessionId, existingPR)
       this.completeSession(sessionId)
-      this.taskQueue.createPRReview(sessionId, existingPR)
       logger.info(`Session ${session.name} completed (existing PR: ${existingPR})`)
       return
     }
@@ -411,13 +420,11 @@ export class SessionManager {
 
     if (!prResult.success) {
       updateSessionStatus(sessionId, "needs_attention", `PR creation failed: ${prResult.error}`)
-      this.taskQueue.createFromBlocker(sessionId, `Failed to create PR: ${prResult.error}`)
       return
     }
 
     setPrUrl(sessionId, prResult.prUrl!)
     this.completeSession(sessionId)
-    this.taskQueue.createPRReview(sessionId, prResult.prUrl!)
     logger.info(`Session ${session.name} completed - PR created: ${prResult.prUrl}`)
   }
 
@@ -455,7 +462,6 @@ export class SessionManager {
       const retryCount = incrementRetryCount(sessionId)
       if (retryCount >= 2) {
         updateSessionStatus(sessionId, "failed")
-        this.taskQueue.createFromRetryFailed(sessionId)
       } else {
         // Auto-restart? Or just queue?
         // Logic says "queued" to retry.

@@ -16,7 +16,7 @@ export const DEFAULT_CONFIG: GlobalConfig = {
       provider: "anthropic",
     },
     claude: {
-      model: "opus",
+      model: "claude-sonnet-4-20250514",
     },
   },
 

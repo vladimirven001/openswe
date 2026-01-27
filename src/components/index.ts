@@ -16,9 +16,10 @@ export { Preview } from "./Preview"
 export { PhaseProgress } from "./PhaseProgress"
 export { HelpModal } from "./HelpModal"
 export { ConfirmDialog } from "./ConfirmDialog"
-export { TaskQueueModal } from "./TaskQueueModal"
 export { ManualSessionModal } from "./ManualSessionModal"
+export { ProviderSwitcherModal } from "./ProviderSwitcherModal"
 export { SessionTerminal } from "./SessionTerminal"
+export { ScrollableText } from "./ScrollableText"
 
 // ============================================================================
 // Types
@@ -33,8 +34,8 @@ export type {
   PhaseProgressProps,
   HelpModalProps,
   ConfirmDialogProps,
-  TaskQueueModalProps,
   ManualSessionModalProps,
+  ProviderSwitcherModalProps,
   PendingAction,
   ModalType,
   ProjectInfo,

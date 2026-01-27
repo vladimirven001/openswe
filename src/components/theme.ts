@@ -163,10 +163,6 @@ export const modals = {
     width: 70,
     height: 24,
   },
-  taskQueue: {
-    width: 70,
-    height: 22,
-  },
   help: {
     width: 44,
     height: 24,
@@ -188,7 +184,6 @@ export const keybindings = {
   newSession: "n",
   issues: "i",
   select: "Enter",
-  tasks: "t",
   help: "?",
   quit: "q",
 }

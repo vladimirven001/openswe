@@ -6,6 +6,7 @@
 
 import { For } from "solid-js"
 import { Footer } from "./Footer"
+import { ScrollableText } from "./ScrollableText"
 import type { ConfirmDialogProps } from "./types"
 import { colors } from "./theme"
 
@@ -37,7 +38,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
         height={modalHeight()}
         backgroundColor={colors.bg.secondary}
         borderStyle="rounded"
-        borderColor={colors.accent.warning}
+        borderColor={colors.border.accent}
         overflow="hidden"
       >
         {/* Header / Title */}
@@ -47,7 +48,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
           paddingLeft={1}
           paddingRight={1}
         >
-          <text fg={colors.accent.warning} attributes={BOLD}>
+          <text fg={colors.text.primary} attributes={BOLD}>
             {props.title}
           </text>
         </box>
@@ -60,11 +61,14 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
           paddingRight={2}
           paddingTop={1}
           paddingBottom={1}
-          justifyContent="center"
         >
           <For each={messageLines()}>
             {(line) => (
-              <text fg={colors.text.primary}>{line || " "}</text>
+              <ScrollableText 
+                text={line || " "} 
+                width={38}
+                fg={colors.text.primary}
+              />
             )}
           </For>
         </box>

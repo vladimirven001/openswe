@@ -11,12 +11,12 @@
 import { Show, createMemo, For } from "solid-js"
 import type { PreviewProps } from "./types"
 import type { Session } from "../store"
-import { getUnresolvedTasksBySession } from "../store"
 import { getPhaseProgress } from "./types"
 import { colors } from "./theme"
 import { Footer } from "./Footer"
 import { truncate } from "../utils/format"
 import { parseAnsiLine } from "../utils/ansi-parser"
+import { getProvider, isProviderSupported } from "../providers"
 
 import { formatTokens } from "../utils/format"
 
@@ -52,26 +52,6 @@ function formatDuration(startedAt: Date | undefined): string {
  */
 function StatusBanner(props: { session: Session }) {
   const bannerInfo = createMemo(() => {
-    const tasks = getUnresolvedTasksBySession(props.session.id)
-    const hasQuestion = tasks.some(t => t.type === "question")
-    const hasError = tasks.some(t => t.type === "blocker" || t.type === "retry_failed")
-
-    if (hasError) {
-      return {
-        icon: "X",
-        text: "Error - needs attention",
-        color: colors.accent.error,
-        bgColor: colors.accent.error,
-      }
-    }
-    if (hasQuestion) {
-      return {
-        icon: "?",
-        text: "Question pending",
-        color: colors.accent.warning,
-        bgColor: colors.accent.warning,
-      }
-    }
     // General needs_attention (e.g., push failed)
     return {
       icon: "!",
@@ -105,14 +85,31 @@ export function Preview(props: PreviewProps) {
   const duration = createMemo(() => formatDuration(props.startedAt))
   const isActive = createMemo(() => props.session?.status === "active")
 
+  // Resolve provider branding from session data if available, otherwise fall back to global prop
+  const resolvedBranding = createMemo(() => {
+    const sessionBackend = props.session?.aiSessionData?.backend
+    if (sessionBackend && isProviderSupported(sessionBackend)) {
+      try {
+        return getProvider(sessionBackend).branding
+      } catch {
+        // Fallback if provider lookup fails
+      }
+    }
+    return props.providerBranding
+  })
+
+  const borderColor = createMemo(() => resolvedBranding()?.accentColor ?? colors.border.primary)
+  const providerName = createMemo(() => resolvedBranding()?.displayName ?? "Terminal")
+  const terminalBackground = createMemo(() => resolvedBranding()?.terminalBackground)
+
   return (
     <box
       flexDirection="column"
       width="70%"
       height="100%"
       borderStyle="rounded"
-      borderColor={colors.border.primary}
-      title={` Preview [Terminal] `}
+      borderColor={borderColor()}
+      title={` Preview [${providerName()}] `}
     >
       <Show
         when={props.session}
@@ -180,7 +177,7 @@ export function Preview(props: PreviewProps) {
                 paddingTop={0}
                 justifyContent="flex-end"
                 overflow="hidden"
-                backgroundColor="#000000"
+                backgroundColor={terminalBackground()}
               >
                 <Show 
                   when={props.session?.status === "active" && props.snapshotLines && props.snapshotLines.length > 0}

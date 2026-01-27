@@ -9,6 +9,7 @@
 
 import type { ProcessManager, ProcessSnapshot } from "./process-manager"
 import { logger } from "../utils/logger"
+import { shellQuote } from "../utils/shell"
 
 export class TmuxManager implements ProcessManager {
   private prefix = "openswe-"
@@ -62,7 +63,7 @@ export class TmuxManager implements ProcessManager {
     // Better approach: Let tmux handle the TUI.
     // For parsing markers: We can use `tmux pipe-pane` to stream output to a file!
     
-    const fullCommand = `${command} ${args.join(" ")}`
+    const fullCommand = `${shellQuote(command)} ${args.map(shellQuote).join(" ")}`
     
     // 1. Create detached session
     // -d: detached

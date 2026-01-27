@@ -16,7 +16,6 @@
     "@iarna/toml": "^2.2.5",
     "@opentui/core": "^0.1.74",
     "@opentui/solid": "^0.1.74",
-    "bun-pty": "0.4.8",
     "solid-js": "^1.9.9",
     "uuid": "^9.0.0",
     "yargs": "^18.0.0"

@@ -8,6 +8,7 @@
 
 import { Show, For } from "solid-js"
 import type { StatusBarProps } from "./types"
+import type { ProviderBranding } from "../providers"
 import { Footer } from "./Footer"
 import { colors, keybindings } from "./theme"
 
@@ -19,8 +20,9 @@ export function StatusBar(props: StatusBarProps) {
     <Show when={props.variant === "header"} fallback={<FooterBar />}>
       <HeaderBar
         repoName={props.repoName}
-        taskCount={props.taskCount}
         backend={props.backend}
+        sessionId={props.sessionId}
+        providerBranding={props.providerBranding}
       />
     </Show>
   )
@@ -28,21 +30,19 @@ export function StatusBar(props: StatusBarProps) {
 
 function HeaderBar(props: {
   repoName?: string
-  taskCount?: number
   backend?: string
+  sessionId?: string
+  providerBranding?: ProviderBranding
 }) {
-  const taskBadge = () => {
-    const count = props.taskCount ?? 0
-    if (count === 0) return null
-    return `[${count} task${count === 1 ? "" : "s"}]`
-  }
+  const headerBg = () => props.providerBranding?.headerBackground ?? props.providerBranding?.accentColor ?? colors.accent.primary
+  const backendDisplay = () => props.providerBranding?.displayName ?? props.backend
 
   return (
     <box
       flexDirection="row"
       width="100%"
       height={1}
-      backgroundColor={colors.accent.primary}
+      backgroundColor={headerBg()}
       paddingLeft={1}
       paddingRight={1}
       justifyContent="space-between"
@@ -55,16 +55,13 @@ function HeaderBar(props: {
           <text fg={colors.text.inverse}>|</text>
           <text fg={colors.text.inverse}>{props.repoName}</text>
         </Show>
-        <Show when={taskBadge()}>
-          <text fg={colors.text.inverse}>|</text>
-          <text fg={colors.accent.warning} attributes={BOLD}>
-            {taskBadge()}
-          </text>
-        </Show>
       </box>
       <box flexDirection="row" gap={1}>
-        <Show when={props.backend}>
-          <text fg={colors.text.inverse}>[{props.backend}]</text>
+        <Show when={props.sessionId}>
+          <text fg={colors.text.inverse}>ID: {props.sessionId}</text>
+        </Show>
+        <Show when={backendDisplay()}>
+          <text fg={colors.text.inverse}>[{backendDisplay()}]</text>
         </Show>
       </box>
     </box>
@@ -75,8 +72,8 @@ function FooterBar() {
   const actions = [
     { key: keybindings.navigate, label: "Navigate" },
     { key: keybindings.newSession, label: "New" },
-    { key: keybindings.tasks, label: "Tasks" },
     { key: keybindings.issues, label: "Issues" },
+    { key: "a", label: "AI" },
     { key: keybindings.help, label: "Help" },
     { key: keybindings.quit, label: "Quit" },
   ]

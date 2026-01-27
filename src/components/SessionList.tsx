@@ -45,6 +45,7 @@ export function SessionList(props: SessionListProps) {
               <SessionCard
                 session={session}
                 isSelected={index() === props.selectedIndex}
+                availableWidth={props.listWidth - 4}
               />
             )}
           </For>

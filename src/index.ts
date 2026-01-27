@@ -42,6 +42,7 @@ interface CLIArgs {
   setup?: boolean
   status?: boolean
   backend?: "opencode" | "claude"
+  model?: string
   debug?: boolean
 }
 
@@ -71,6 +72,10 @@ const argv = await yargs(hideBin(process.argv))
     choices: ["opencode", "claude"] as const,
     description: "AI backend to use",
   })
+  .option("model", {
+    type: "string",
+    description: "AI model to use (e.g. claude-3-5-sonnet-20240620)",
+  })
   .option("debug", {
     type: "boolean",
     description: "Enable debug logging",
@@ -89,6 +94,7 @@ async function main() {
   // Load configuration with CLI overrides
   const config = await loadConfig({
     backend: argv.backend as AIBackend | undefined,
+    model: argv.model,
     debug: argv.debug,
   })
 

@@ -9,7 +9,7 @@ import { createWorktree, removeWorktree, worktreeExists } from "../git"
 import { createSession, deleteSession, getSession } from "../store"
 import { getWorktreePath, generateBranchName, sanitizeWorktreeName } from "../workspace/paths"
 import type { GitHubIssue } from "../github"
-import type { Session } from "../store"
+import type { Session, AISessionData } from "../store"
 import { logger } from "../utils/logger"
 
 // ============================================================================
@@ -29,6 +29,11 @@ export interface CreateSessionOptions {
 	 * If false (default), will fail if worktree exists.
 	 */
 	overwriteWorktreeChoice?: OverwriteWorktreeChoice
+
+	/**
+	 * Initial AI session data (e.g. backend provider)
+	 */
+	aiSessionData?: AISessionData
 }
 
 export enum OverwriteWorktreeChoice {
@@ -159,6 +164,7 @@ export async function createSessionFromIssue(
 			issueUrl: issue.url,
 			worktreePath,
 			branchName,
+			aiSessionData: options.aiSessionData,
 		})
 
 		logger.debug("Session created", {
@@ -192,11 +198,13 @@ export async function createSessionFromIssue(
  *
  * @param projectRoot - Absolute path to the project root
  * @param name - Session name (will be sanitized for worktree)
+ * @param options - Creation options (optional)
  * @returns Result with the created session or error
  */
 export async function createManualSession(
 	projectRoot: string,
-	name: string
+	name: string,
+	options: { aiSessionData?: AISessionData } = {}
 ): Promise<CreateSessionResult> {
 	const sanitizedName = sanitizeWorktreeName(name)
 
@@ -223,6 +231,7 @@ export async function createManualSession(
 			name,
 			worktreePath: worktreeResult.worktreePath!,
 			branchName: worktreeResult.branchName!,
+			aiSessionData: options.aiSessionData,
 		})
 
 		logger.debug("Manual session created", { sessionId: session.id })

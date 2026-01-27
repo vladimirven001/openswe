@@ -37,16 +37,6 @@ import {
   deleteSession,
 } from "./sessions"
 import {
-  getAllTasks,
-  getTask,
-  getUnresolvedTasks,
-  getUnresolvedTaskCount,
-  getTasksBySession,
-  createTask,
-  resolveTask,
-  deleteTasksBySession,
-} from "./tasks"
-import {
   getBuffer,
   getRecentLines,
   createBuffer,
@@ -100,7 +90,6 @@ describe("Database Initialization", () => {
     const tableNames = tables.map((t) => t.name)
     expect(tableNames).toContain("project")
     expect(tableNames).toContain("sessions")
-    expect(tableNames).toContain("human_tasks")
     expect(tableNames).toContain("output_buffers")
     expect(tableNames).toContain("schema_version")
   })
@@ -437,193 +426,8 @@ describe("Session Operations", () => {
 })
 
 // ============================================================================
-// Human Task CRUD Tests
+// Human Task CRUD Tests - REMOVED
 // ============================================================================
-
-describe("Human Task Operations", () => {
-  let sessionId: string
-
-  beforeEach(() => {
-    const session = createSession({
-      name: "test-session",
-      worktreePath: "/path/to/worktree",
-      branchName: "openswe/test-session",
-    })
-    sessionId = session.id
-  })
-
-  test("getAllTasks returns empty initially", () => {
-    expect(getAllTasks()).toEqual([])
-  })
-
-  test("createTask creates task with defaults", () => {
-    const task = createTask({
-      sessionId,
-      sessionName: "test-session",
-      type: "question",
-      title: "Need clarification",
-    })
-
-    expect(task.id).toBeDefined()
-    expect(task.sessionId).toBe(sessionId)
-    expect(task.sessionName).toBe("test-session")
-    expect(task.type).toBe("question")
-    expect(task.priority).toBe("normal")
-    expect(task.title).toBe("Need clarification")
-    expect(task.context).toBeNull()
-    expect(task.rawOutput).toBeNull()
-    expect(task.resolvedAt).toBeNull()
-  })
-
-  test("createTask with all fields", () => {
-    const task = createTask({
-      sessionId,
-      sessionName: "test-session",
-      issueNumber: 123,
-      type: "blocker",
-      priority: "high",
-      title: "Blocked on API",
-      context: "Additional context",
-      rawOutput: "Raw AI output",
-    })
-
-    expect(task.issueNumber).toBe(123)
-    expect(task.type).toBe("blocker")
-    expect(task.priority).toBe("high")
-    expect(task.context).toBe("Additional context")
-    expect(task.rawOutput).toBe("Raw AI output")
-  })
-
-  test("getTask retrieves by ID", () => {
-    const created = createTask({
-      sessionId,
-      sessionName: "test-session",
-      type: "question",
-      title: "Test task",
-    })
-
-    const retrieved = getTask(created.id)
-    expect(retrieved).not.toBeNull()
-    expect(retrieved!.id).toBe(created.id)
-  })
-
-  test("getUnresolvedTasks returns only unresolved", () => {
-    const task1 = createTask({
-      sessionId,
-      sessionName: "test-session",
-      type: "question",
-      title: "Task 1",
-    })
-    createTask({
-      sessionId,
-      sessionName: "test-session",
-      type: "question",
-      title: "Task 2",
-    })
-
-    expect(getUnresolvedTasks().length).toBe(2)
-
-    resolveTask(task1.id)
-
-    expect(getUnresolvedTasks().length).toBe(1)
-  })
-
-  test("getUnresolvedTaskCount counts correctly", () => {
-    createTask({
-      sessionId,
-      sessionName: "test-session",
-      type: "question",
-      title: "Task 1",
-    })
-    const task2 = createTask({
-      sessionId,
-      sessionName: "test-session",
-      type: "question",
-      title: "Task 2",
-    })
-
-    expect(getUnresolvedTaskCount()).toBe(2)
-
-    resolveTask(task2.id)
-    expect(getUnresolvedTaskCount()).toBe(1)
-  })
-
-  test("getTasksBySession returns session tasks", () => {
-    const session2 = createSession({
-      name: "session-2",
-      worktreePath: "/path/2",
-      branchName: "openswe/session-2",
-    })
-
-    createTask({
-      sessionId,
-      sessionName: "test-session",
-      type: "question",
-      title: "Task for session 1",
-    })
-    createTask({
-      sessionId: session2.id,
-      sessionName: "session-2",
-      type: "question",
-      title: "Task for session 2",
-    })
-
-    const session1Tasks = getTasksBySession(sessionId)
-    expect(session1Tasks.length).toBe(1)
-    expect(session1Tasks[0]?.title).toBe("Task for session 1")
-  })
-
-  test("resolveTask sets resolvedAt", () => {
-    const task = createTask({
-      sessionId,
-      sessionName: "test-session",
-      type: "question",
-      title: "Test task",
-    })
-
-    expect(getTask(task.id)!.resolvedAt).toBeNull()
-
-    resolveTask(task.id)
-
-    expect(getTask(task.id)!.resolvedAt).not.toBeNull()
-  })
-
-  test("deleteTasksBySession removes all session tasks", () => {
-    createTask({
-      sessionId,
-      sessionName: "test-session",
-      type: "question",
-      title: "Task 1",
-    })
-    createTask({
-      sessionId,
-      sessionName: "test-session",
-      type: "question",
-      title: "Task 2",
-    })
-
-    expect(getTasksBySession(sessionId).length).toBe(2)
-
-    deleteTasksBySession(sessionId)
-
-    expect(getTasksBySession(sessionId).length).toBe(0)
-  })
-
-  test("cascade delete removes tasks when session deleted", () => {
-    createTask({
-      sessionId,
-      sessionName: "test-session",
-      type: "question",
-      title: "Test task",
-    })
-
-    expect(getAllTasks().length).toBe(1)
-
-    deleteSession(sessionId)
-
-    expect(getAllTasks().length).toBe(0)
-  })
-})
 
 // ============================================================================
 // Output Buffer Tests

@@ -4,6 +4,7 @@ import type { IssueSelectorModalProps } from "./types"
 import type { Session } from "../store"
 import { fetchIssues, formatRelativeTime, type GitHubIssue, type IssueState } from "../github"
 import { createSessionFromIssue, findNextAvailableWorktreeName } from "./session-utils"
+import { ScrollableText } from "./ScrollableText"
 import { colors, borders } from "./theme"
 import { Footer } from "./Footer"
 import { logger } from "../utils/logger"
@@ -133,7 +134,9 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     }
 
     // Try to create session normally first
-    const result = await createSessionFromIssue(props.projectRoot, issue)
+    const result = await createSessionFromIssue(props.projectRoot, issue, {
+      aiSessionData: { backend: props.currentBackend }
+    })
     
     // Check if cancelled during await
     if (!creating()) return
@@ -184,7 +187,8 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     // Create with chosen strategy
     const result = await createSessionFromIssue(props.projectRoot, issue, {
       	worktreeNameOverride: choice === 1 ? suggestion : undefined,
-      	overwriteWorktreeChoice: choice // Maps directly to OverwriteWorktreeChoice enum
+      	overwriteWorktreeChoice: choice, // Maps directly to OverwriteWorktreeChoice enum
+        aiSessionData: { backend: props.currentBackend }
     })
     
     // Check if cancelled during await
@@ -514,12 +518,13 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
 
                           {/* Title (Flex) */}
                           <box flexGrow={1} marginRight={2} overflow="hidden">
-                            <text
+                            <ScrollableText
+                              text={issue.title}
+                              width={30}
+                              isActive={isFocused()}
                               fg={isFocused() ? colors.text.primary : colors.text.secondary}
                               attributes={isFocused() ? BOLD : 0}
-                            >
-                              {truncate(issue.title, 100)}
-                            </text>
+                            />
                           </box>
 
                           {/* Labels (Variable) */}

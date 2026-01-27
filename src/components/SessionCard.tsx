@@ -2,14 +2,13 @@
  * SessionCard component - displays a single session in the list
  *
  * Layout (1 line):
- * - Status icon + session name + spacer + phase indicator
+ * - Status icon + session name
  */
 
 import type { SessionCardProps } from "./types"
 import { STATUS_ICONS } from "./types"
-import { PhaseProgress } from "./PhaseProgress"
-import { colors, typography } from "./theme"
-import { truncate } from "../utils/format"
+import { ScrollableText } from "./ScrollableText"
+import { colors } from "./theme"
 
 // Bold attribute constant
 const BOLD = 1
@@ -17,10 +16,13 @@ const BOLD = 1
 export function SessionCard(props: SessionCardProps) {
   const statusIcon = () => STATUS_ICONS[props.session.status]
   const statusColor = () => colors.status[props.session.status]
-
-  // Reduced length to accommodate phase on same line
-  const truncatedName = () =>
-    truncate(props.session.name, typography.maxSessionNameLength - 10)
+  
+  // Calculate width for the name scrolling area
+  // availableWidth is total inner width of the card
+  // Subtract: 
+  // - Padding (L+R): 2
+  // - Status Icon + Gap: 2
+  const nameWidth = () => Math.max(10, props.availableWidth - 4)
 
   return (
     <box
@@ -44,14 +46,13 @@ export function SessionCard(props: SessionCardProps) {
         <text fg={statusColor()} attributes={BOLD}>
           {statusIcon()}
         </text>
-        <text fg={colors.text.primary} attributes={props.isSelected ? BOLD : 0}>
-          {truncatedName()}
-        </text>
-      </box>
-
-      {/* Right: Phase */}
-      <box flexShrink={0} paddingLeft={1}>
-        <PhaseProgress phase={props.session.phase} variant="inline" />
+        <ScrollableText
+          text={props.session.name}
+          width={nameWidth()}
+          isActive={props.isSelected}
+          fg={colors.text.primary}
+          attributes={props.isSelected ? BOLD : 0}
+        />
       </box>
     </box>
   )

@@ -4,7 +4,7 @@
  * Collects a session name and creates a worktree + session entry.
  */
 
-import { createSignal, Show } from "solid-js"
+import { createSignal, createEffect, onCleanup, Show } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import type { ManualSessionModalProps } from "./types"
 import { createManualSession } from "./session-utils"
@@ -14,6 +14,7 @@ import { logger } from "../utils/logger"
 
 // Bold attribute constant
 const BOLD = 1
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
 export function ManualSessionModal(props: ManualSessionModalProps) {
   const modalWidth = 50
@@ -22,6 +23,17 @@ export function ManualSessionModal(props: ManualSessionModalProps) {
   const [name, setName] = createSignal("")
   const [error, setError] = createSignal<string | null>(null)
   const [creating, setCreating] = createSignal(false)
+  const [spinnerFrame, setSpinnerFrame] = createSignal(0)
+
+  // Spinner animation
+  createEffect(() => {
+    if (creating()) {
+      const interval = setInterval(() => {
+        setSpinnerFrame((prev) => (prev + 1) % SPINNER_FRAMES.length)
+      }, 80)
+      onCleanup(() => clearInterval(interval))
+    }
+  })
 
   // Dynamic height based on error/creating state
   const modalHeight = () => {
@@ -49,7 +61,9 @@ export function ManualSessionModal(props: ManualSessionModalProps) {
     setError(null)
     logger.debug("Creating manual session", { name: trimmed })
 
-    const result = await createManualSession(props.projectRoot, trimmed)
+    const result = await createManualSession(props.projectRoot, trimmed, {
+      aiSessionData: { backend: props.currentBackend }
+    })
 
     if (result.success) {
       logger.debug("Manual session created", { sessionId: result.session?.id })
@@ -141,7 +155,9 @@ export function ManualSessionModal(props: ManualSessionModalProps) {
 
           <Show when={creating()}>
             <box height={1} justifyContent="center">
-              <text fg={colors.accent.primary}>Creating session...</text>
+              <text fg={colors.accent.primary}>
+                {SPINNER_FRAMES[spinnerFrame()]} Creating session...
+              </text>
             </box>
           </Show>
         </box>

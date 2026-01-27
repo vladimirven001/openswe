@@ -13,7 +13,6 @@ import { useKeyboard, useRenderer } from "@opentui/solid"
 import type { Session } from "../store"
 import {
   getAllSessions,
-  getUnresolvedTaskCount,
   getProject,
   updateSessionStatus,
   getSession,
@@ -21,14 +20,17 @@ import {
 import { SessionManager } from "../core"
 import { generateSWEPrompt } from "../prompts"
 import type { AppProps, ModalType, ProjectInfo, PendingAction } from "./types"
+import type { ProviderBranding } from "../providers"
+import type { AIBackend } from "../config"
+import { saveGlobalConfig } from "../config"
 import { StatusBar } from "./StatusBar"
 import { SessionList } from "./SessionList"
 import { Preview } from "./Preview"
 import { HelpModal } from "./HelpModal"
 import { ConfirmDialog } from "./ConfirmDialog"
 import { IssueSelectorModal } from "./IssueSelectorModal"
-import { TaskQueueModal } from "./TaskQueueModal"
 import { ManualSessionModal } from "./ManualSessionModal"
+import { ProviderSwitcherModal } from "./ProviderSwitcherModal"
 import { deleteSessionWithWorktree } from "./session-utils"
 import { colors } from "./theme"
 import { logger } from "../utils/logger"
@@ -40,20 +42,24 @@ export function App(props: AppProps) {
   const sessionManager = new SessionManager(props.config, props.projectRoot)
   const renderer = useRenderer()
 
+  // Get provider branding from session manager (reactive)
+  const [providerBranding, setProviderBranding] = createSignal<ProviderBranding>(
+    sessionManager.getProvider().branding
+  )
+
   // ============================================================================
   // State
   // ============================================================================
 
   const [sessions, setSessions] = createSignal<Session[]>([])
   const [selectedIndex, setSelectedIndex] = createSignal(0)
-  const [unresolvedTaskCount, setUnresolvedTaskCount] = createSignal(0)
   const [projectInfo, setProjectInfo] = createSignal<ProjectInfo | null>(null)
   const [snapshotLines, setSnapshotLines] = createSignal<string[]>([])
   const [sessionStartedAt, setSessionStartedAt] = createSignal<Date | undefined>(undefined)
   const [activeModal, setActiveModal] = createSignal<ModalType>("none")
   const [pendingAction, setPendingAction] = createSignal<PendingAction | null>(null)
   const [isAttaching, setIsAttaching] = createSignal(false)
-  
+
   // Terminal size tracking
   const [termSize, setTermSize] = createSignal({ cols: process.stdout.columns, rows: process.stdout.rows })
 
@@ -69,6 +75,8 @@ export function App(props: AppProps) {
     }
     return null
   }
+
+  const sessionListWidth = () => Math.floor(termSize().cols * 0.3)
 
   // Calculate optimal terminal size for preview
   const previewSize = () => {
@@ -105,14 +113,6 @@ export function App(props: AppProps) {
     }
   }
 
-  const loadTaskCount = () => {
-    try {
-      setUnresolvedTaskCount(getUnresolvedTaskCount())
-    } catch {
-      setUnresolvedTaskCount(0)
-    }
-  }
-
   const loadProjectInfo = () => {
     try {
       const project = getProject()
@@ -141,13 +141,11 @@ export function App(props: AppProps) {
     sessionManager.recoverSessions()
 
     loadSessions()
-    loadTaskCount()
     loadProjectInfo()
 
     // Set up periodic refresh for dashboard data
     const refreshId = setInterval(() => {
       loadSessions()
-      loadTaskCount()
     }, REFRESH_INTERVAL)
 
     // Set up faster refresh for preview activities
@@ -287,7 +285,6 @@ export function App(props: AppProps) {
 
       case "r":
         loadSessions()
-        loadTaskCount()
         break
 
       case "return":
@@ -340,10 +337,6 @@ export function App(props: AppProps) {
         break
 
       // Modal triggers
-      case "t":
-        setActiveModal("tasks")
-        break
-
       case "i":
         if (projectInfo()) {
           setActiveModal("issues")
@@ -354,6 +347,10 @@ export function App(props: AppProps) {
 
       case "?":
         setActiveModal("help")
+        break
+
+      case "a":
+        setActiveModal("provider")
         break
 
       // Quit
@@ -372,6 +369,23 @@ export function App(props: AppProps) {
   }
 
   // ============================================================================
+  // Provider Change Handler
+  // ============================================================================
+
+  const handleProviderChange = async (backend: AIBackend) => {
+    sessionManager.setProvider(backend)
+    setProviderBranding(sessionManager.getProvider().branding)
+    setActiveModal("none")
+
+    // Persist to config file
+    try {
+      await saveGlobalConfig({ ai: { backend } })
+    } catch (error) {
+      logger.error("Failed to save provider preference:", error)
+    }
+  }
+
+  // ============================================================================
   // Render
   // ============================================================================
 
@@ -386,8 +400,9 @@ export function App(props: AppProps) {
       <StatusBar
         variant="header"
         repoName={projectInfo()?.repoFullName}
-        taskCount={unresolvedTaskCount()}
         backend={props.config.ai.backend}
+        sessionId={selectedSession()?.id}
+        providerBranding={providerBranding()}
       />
 
       {/* Main Content Area */}
@@ -396,11 +411,13 @@ export function App(props: AppProps) {
           sessions={sessions()}
           selectedIndex={selectedIndex()}
           onSelect={handleSelect}
+          listWidth={sessionListWidth()}
         />
         <Preview
           session={selectedSession()}
           startedAt={sessionStartedAt()}
           snapshotLines={snapshotLines()}
+          providerBranding={providerBranding()}
         />
       </box>
 
@@ -436,6 +453,7 @@ export function App(props: AppProps) {
         <IssueSelectorModal
           ownerRepo={projectInfo()!.repoFullName}
           projectRoot={props.projectRoot}
+          currentBackend={props.config.ai.backend}
           onClose={() => setActiveModal("none")}
           onSessionsCreated={async (sessions) => {
             // Auto-start all created sessions
@@ -457,23 +475,17 @@ export function App(props: AppProps) {
       <Show when={activeModal() === "manual"}>
         <ManualSessionModal
           projectRoot={props.projectRoot}
+          currentBackend={props.config.ai.backend}
           onClose={() => setActiveModal("none")}
           onSessionCreated={() => loadSessions()}
         />
       </Show>
 
-      <Show when={activeModal() === "tasks"}>
-        <TaskQueueModal
+      <Show when={activeModal() === "provider"}>
+        <ProviderSwitcherModal
+          currentBackend={props.config.ai.backend}
+          onSelect={handleProviderChange}
           onClose={() => setActiveModal("none")}
-          onJumpToSession={(sessionId) => {
-            // Find session index and select it
-            const idx = sessions().findIndex((s) => s.id === sessionId)
-            if (idx >= 0) {
-              setSelectedIndex(idx)
-            }
-            setActiveModal("none")
-            // TODO Phase 11: Trigger takeover mode for the session
-          }}
         />
       </Show>
     </box>

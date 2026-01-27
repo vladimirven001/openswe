@@ -97,6 +97,7 @@ export type PartialConfig = DeepPartial<GlobalConfig>
 /** CLI flags that can override configuration */
 export interface CLIOverrides {
   backend?: AIBackend
+  model?: string
   debug?: boolean
 }
 

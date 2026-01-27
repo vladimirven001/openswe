@@ -12,14 +12,10 @@
 export type {
   Phase,
   Status,
-  TaskType,
-  TaskPriority,
   AISessionData,
   Session,
   CreateSessionInput,
   UpdateSessionInput,
-  HumanTask,
-  CreateTaskInput,
   ProjectState,
   CreateProjectInput,
   OutputBuffer,
@@ -28,8 +24,6 @@ export type {
 export {
   isValidPhase,
   isValidStatus,
-  isValidTaskType,
-  isValidTaskPriority,
   isValidAISessionData,
 } from "./types"
 
@@ -88,26 +82,6 @@ export {
   deleteSession,
   deleteAllSessions,
 } from "./sessions"
-
-// ============================================================================
-// Task Operations
-// ============================================================================
-
-export {
-  getAllTasks,
-  getTask,
-  getUnresolvedTasks,
-  getUnresolvedTaskCount,
-  getTasksBySession,
-  getUnresolvedTasksBySession,
-  getTasksByType,
-  createTask,
-  resolveTask,
-  unresolveTask,
-  deleteTask,
-  deleteTasksBySession,
-  deleteResolvedTasks,
-} from "./tasks"
 
 // ============================================================================
 // Buffer Operations
