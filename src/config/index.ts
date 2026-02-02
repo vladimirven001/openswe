@@ -18,7 +18,6 @@ export type {
   AIBackend,
   LogLevel,
   AIConfig,
-  PRConfig,
   KeybindingsConfig,
   AdvancedConfig,
 } from "./types"

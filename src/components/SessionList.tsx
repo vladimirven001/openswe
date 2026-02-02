@@ -10,9 +10,10 @@
 import { Show, For } from "solid-js"
 import type { SessionListProps } from "./types"
 import { SessionCard } from "./SessionCard"
-import { colors } from "./theme"
+import { useColors } from "./theme"
 
 export function SessionList(props: SessionListProps) {
+  const colors = useColors()
   const totalCount = () => props.sessions.length
   const activeCount = () =>
     props.sessions.filter((s) => s.status === "active").length
@@ -25,7 +26,7 @@ export function SessionList(props: SessionListProps) {
       width="30%"
       height="100%"
       borderStyle="rounded"
-      borderColor={colors.border.primary}
+      borderColor={colors().border.primary}
       title={title()}
     >
       <Show
@@ -56,6 +57,7 @@ export function SessionList(props: SessionListProps) {
 }
 
 function EmptyState() {
+  const colors = useColors()
   return (
     <box
       flexDirection="column"
@@ -65,11 +67,11 @@ function EmptyState() {
       alignItems="center"
       gap={1}
     >
-      <text fg={colors.text.muted}>No sessions yet</text>
-      <text fg={colors.text.secondary}>
+      <text fg={colors().text.muted}>No sessions yet</text>
+      <text fg={colors().text.secondary}>
         Press 'n' to create a new session
       </text>
-      <text fg={colors.text.secondary}>
+      <text fg={colors().text.secondary}>
         or 'i' to browse issues
       </text>
     </box>

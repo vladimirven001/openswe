@@ -73,24 +73,6 @@ export async function promptAiBackend(): Promise<AIBackendChoice | symbol> {
 }
 
 // ============================================================================
-// PR Configuration
-// ============================================================================
-
-/**
- * Prompt for automatic PR creation preference
- *
- * @returns true/false or a symbol if cancelled
- */
-export async function promptAutoPr(): Promise<boolean | symbol> {
-  const autoPr = await p.confirm({
-    message: "Automatically create PRs when sessions complete?",
-    initialValue: true,
-  })
-
-  return autoPr
-}
-
-// ============================================================================
 // Repository Adoption
 // ============================================================================
 

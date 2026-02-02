@@ -13,18 +13,19 @@ import {
   getPhaseProgress,
   generateProgressBar,
 } from "./types"
-import { colors } from "./theme"
+import { useColors } from "./theme"
 
 export function PhaseProgress(props: PhaseProgressProps) {
+  const colors = useColors()
   const displayName = () => PHASE_DISPLAY_NAMES[props.phase]
   const progress = () => getPhaseProgress(props.phase)
   const progressBar = () => generateProgressBar(progress(), 10)
 
   // Color based on phase
   const phaseColor = () => {
-    if (props.phase === "completed") return colors.accent.success
-    if (props.phase === "failed") return colors.accent.error
-    return colors.progress.text
+    if (props.phase === "completed") return colors().accent.success
+    if (props.phase === "failed") return colors().accent.error
+    return colors().progress.text
   }
 
   return (
@@ -35,9 +36,9 @@ export function PhaseProgress(props: PhaseProgressProps) {
       }
     >
       <box flexDirection="row" gap={1}>
-        <text fg={colors.progress.filled}>{progressBar()}</text>
+        <text fg={colors().progress.filled}>{progressBar()}</text>
         <text fg={phaseColor()}>{displayName()}</text>
-        <text fg={colors.text.muted}>({progress()}%)</text>
+        <text fg={colors().text.muted}>({progress()}%)</text>
       </box>
     </Show>
   )

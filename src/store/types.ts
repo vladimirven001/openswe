@@ -65,8 +65,6 @@ export interface Session {
   retryCount: number
   /** Total tokens used by AI */
   tokensUsed: number
-  /** Pull request URL once created */
-  prUrl: string | null
   /** Process ID if session is running */
   pid: number | null
   /** AI backend session reference data */
@@ -97,7 +95,6 @@ export interface UpdateSessionInput {
   attentionReason?: string | null
   retryCount?: number
   tokensUsed?: number
-  prUrl?: string | null
   pid?: number | null
   aiSessionData?: AISessionData | null
 }

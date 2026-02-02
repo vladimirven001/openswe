@@ -33,7 +33,7 @@ import { ManualSessionModal } from "./ManualSessionModal"
 import { ProviderSwitcherModal } from "./ProviderSwitcherModal"
 import { ThemeSwitcherModal } from "./ThemeSwitcherModal"
 import { deleteSessionWithWorktree } from "./session-utils"
-import { colors } from "./theme"
+import { useColors } from "./theme"
 import { useTheme } from "../theme"
 import { logger } from "../utils/logger"
 
@@ -44,6 +44,7 @@ export function App(props: AppProps) {
   const sessionManager = new SessionManager(props.config, props.projectRoot)
   const renderer = useRenderer()
   const { themeName, setTheme } = useTheme()
+  const colors = useColors()
 
   // Get provider branding from session manager (reactive)
   const [providerBranding, setProviderBranding] = createSignal<ProviderBranding>(
@@ -417,7 +418,7 @@ export function App(props: AppProps) {
       flexDirection="column"
       width="100%"
       height="100%"
-      backgroundColor={colors.bg.primary}
+      backgroundColor={colors().bg.primary}
     >
       {/* Header Status Bar */}
       <StatusBar

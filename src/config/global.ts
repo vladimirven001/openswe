@@ -48,9 +48,6 @@ export async function configFileExists(): Promise<boolean> {
 
 /** Map of camelCase keys to snake_case TOML keys */
 const CAMEL_TO_SNAKE: Record<string, string> = {
-  autoCreate: "auto_create",
-  titleTemplate: "title_template",
-  bodyTemplate: "body_template",
   navigateUp: "navigate_up",
   navigateDown: "navigate_down",
   newSession: "new_session",
@@ -150,17 +147,6 @@ function validateParsedConfig(parsed: unknown): PartialConfig {
       config.ai.claude = {}
       if (isNonEmptyString(cl.model)) config.ai.claude.model = cl.model
     }
-  }
-
-  // Validate pr section
-  if (raw.pr && typeof raw.pr === "object") {
-    const pr = raw.pr as Record<string, unknown>
-    config.pr = {}
-
-    if (isBoolean(pr.autoCreate)) config.pr.autoCreate = pr.autoCreate
-    if (isBoolean(pr.draft)) config.pr.draft = pr.draft
-    if (isNonEmptyString(pr.titleTemplate)) config.pr.titleTemplate = pr.titleTemplate
-    if (isNonEmptyString(pr.bodyTemplate)) config.pr.bodyTemplate = pr.bodyTemplate
   }
 
   // Validate keybindings section

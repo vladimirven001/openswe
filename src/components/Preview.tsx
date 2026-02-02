@@ -12,7 +12,7 @@ import { Show, createMemo, For } from "solid-js"
 import type { PreviewProps } from "./types"
 import type { Session } from "../store"
 import { getPhaseProgress } from "./types"
-import { colors } from "./theme"
+import { useColors, type Colors } from "./theme"
 import { Footer } from "./Footer"
 import { truncate } from "../utils/format"
 import { parseAnsiLine } from "../utils/ansi-parser"
@@ -51,13 +51,14 @@ function formatDuration(startedAt: Date | undefined): string {
  * Displays colored banner when session needs attention due to questions/errors
  */
 function StatusBanner(props: { session: Session }) {
+  const colors = useColors()
   const bannerInfo = createMemo(() => {
     // General needs_attention (e.g., push failed)
     return {
       icon: "!",
       text: props.session.attentionReason || "Needs attention",
-      color: colors.accent.warning,
-      bgColor: colors.accent.warning,
+      color: colors().accent.warning,
+      bgColor: colors().accent.warning,
     }
   })
 
@@ -82,6 +83,7 @@ function StatusBanner(props: { session: Session }) {
 }
 
 export function Preview(props: PreviewProps) {
+  const colors = useColors()
   const duration = createMemo(() => formatDuration(props.startedAt))
   const isActive = createMemo(() => props.session?.status === "active")
 
@@ -98,7 +100,7 @@ export function Preview(props: PreviewProps) {
     return props.providerBranding
   })
 
-  const borderColor = createMemo(() => resolvedBranding()?.accentColor ?? colors.border.primary)
+  const borderColor = createMemo(() => resolvedBranding()?.accentColor ?? colors().border.primary)
   const providerName = createMemo(() => resolvedBranding()?.displayName ?? "Terminal")
   const terminalBackground = createMemo(() => resolvedBranding()?.terminalBackground)
 
@@ -131,27 +133,27 @@ export function Preview(props: PreviewProps) {
                 overflow="hidden"
               >
                 <box flexDirection="column" overflow="hidden" flexGrow={1} marginRight={1}>
-                  <text fg={colors.text.primary} attributes={BOLD}>
+                  <text fg={colors().text.primary} attributes={BOLD}>
                     {truncate(session().name, 60)}
                   </text>
                   <Show when={session().issueNumber}>
-                    <text fg={colors.text.secondary}>
+                    <text fg={colors().text.secondary}>
                       Issue #{session().issueNumber}
                     </text>
                   </Show>
                 </box>
-                
+
                 {/* Right side metadata */}
                 <box flexDirection="column" alignItems="flex-end" marginRight={1}>
                   <box flexDirection="row" gap={1}>
-                    <text fg={colors.text.muted}>
+                    <text fg={colors().text.muted}>
                       {session().tokensUsed ? session().tokensUsed.toLocaleString() : "0"}
                     </text>
-                    <text fg={colors.text.muted}>
+                    <text fg={colors().text.muted}>
                       {getPhaseProgress(session().phase)}%
                     </text>
-                    <text fg={colors.text.muted}>($0.00)</text>
-                    <text fg={colors.text.muted}>{VERSION}</text>
+                    <text fg={colors().text.muted}>($0.00)</text>
+                    <text fg={colors().text.muted}>{VERSION}</text>
                   </box>
                 </box>
               </box>
@@ -163,7 +165,7 @@ export function Preview(props: PreviewProps) {
 
               {/* Separator */}
               <box width="100%" height={1} overflow="hidden">
-                <text fg={colors.border.secondary}>
+                <text fg={colors().border.secondary}>
                   {"─".repeat(500)}
                 </text>
               </box>
@@ -179,11 +181,11 @@ export function Preview(props: PreviewProps) {
                 overflow="hidden"
                 backgroundColor={terminalBackground()}
               >
-                <Show 
+                <Show
                   when={props.session?.status === "active" && props.snapshotLines && props.snapshotLines.length > 0}
                   fallback={
                     <box height="100%" justifyContent="center" alignItems="center">
-                      <text fg={colors.text.muted}>Waiting for output...</text>
+                      <text fg={colors().text.muted}>Waiting for output...</text>
                     </box>
                   }
                 >
@@ -195,7 +197,7 @@ export function Preview(props: PreviewProps) {
                           <For each={segments}>
                             {(segment) => (
                               <text
-                                fg={segment.fg || colors.text.primary}
+                                fg={segment.fg || colors().text.primary}
                                 bg={segment.bg}
                                 attributes={segment.bold ? BOLD : undefined}
                               >
@@ -228,6 +230,7 @@ export function Preview(props: PreviewProps) {
 }
 
 function NoSelectionState() {
+  const colors = useColors()
   return (
     <box
       flexDirection="column"
@@ -237,8 +240,8 @@ function NoSelectionState() {
       alignItems="center"
       gap={1}
     >
-      <text fg={colors.text.muted}>No session selected</text>
-      <text fg={colors.text.secondary}>
+      <text fg={colors().text.muted}>No session selected</text>
+      <text fg={colors().text.secondary}>
         Select a session to view terminal output
       </text>
     </box>

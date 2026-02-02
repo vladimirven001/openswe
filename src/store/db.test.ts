@@ -32,7 +32,6 @@ import {
   updateSessionStatus,
   incrementRetryCount,
   updateTokensUsed,
-  setPrUrl,
   setPid,
   deleteSession,
 } from "./sessions"
@@ -207,7 +206,6 @@ describe("Session Operations", () => {
     expect(session.retryCount).toBe(0)
     expect(session.tokensUsed).toBe(0)
     expect(session.pid).toBeNull()
-    expect(session.prUrl).toBeNull()
   })
 
   test("createSession with issue data", () => {
@@ -385,17 +383,6 @@ describe("Session Operations", () => {
 
     updateTokensUsed(session.id, 5000)
     expect(getSession(session.id)!.tokensUsed).toBe(5000)
-  })
-
-  test("setPrUrl sets PR URL", () => {
-    const session = createSession({
-      name: "test-session",
-      worktreePath: "/path/to/worktree",
-      branchName: "openswe/test-session",
-    })
-
-    setPrUrl(session.id, "https://github.com/owner/repo/pull/1")
-    expect(getSession(session.id)!.prUrl).toBe("https://github.com/owner/repo/pull/1")
   })
 
   test("setPid sets and clears PID", () => {

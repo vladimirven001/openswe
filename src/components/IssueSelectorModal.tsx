@@ -5,7 +5,7 @@ import type { Session } from "../store"
 import { fetchIssues, formatRelativeTime, type GitHubIssue, type IssueState } from "../github"
 import { createSessionFromIssue, findNextAvailableWorktreeName } from "./session-utils"
 import { ScrollableText } from "./ScrollableText"
-import { colors, borders } from "./theme"
+import { useColors, borders } from "./theme"
 import { Footer } from "./Footer"
 import { logger } from "../utils/logger"
 
@@ -18,6 +18,8 @@ const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", 
 const STATE_FILTERS: IssueState[] = ["open", "closed", "all"]
 
 export function IssueSelectorModal(props: IssueSelectorModalProps) {
+  const colors = useColors()
+
   // ============================================================================
   // State
   // ============================================================================
@@ -31,6 +33,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   const [error, setError] = createSignal<string | null>(null)
   const [creating, setCreating] = createSignal(false)
   const [spinnerFrame, setSpinnerFrame] = createSignal(0)
+  const [resolving, setResolving] = createSignal(false)
 
   // Animation effect
   createEffect(() => {
@@ -178,9 +181,11 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   }
 
   const resolveConflict = async () => {
+    if (resolving()) return
     const issue = conflictIssue()
     if (!issue) return
 
+    setResolving(true)
     const choice = conflictChoice()
     const suggestion = suggestedName()
     
@@ -191,6 +196,8 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
         aiSessionData: { backend: props.currentBackend }
     })
     
+    setResolving(false)
+
     // Check if cancelled during await
     if (!creating()) return
 
@@ -297,13 +304,39 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
         setPendingIndices([])
         setCreating(false)
         setConflictIssue(null)
+        setResolving(false)
       } else {
         props.onClose()
       }
       return
     }
 
-    if (loading() || creating()) return
+    if (loading()) return
+
+    // If creating, only handle specific keys for conflict
+    if (creating()) {
+        if (conflictIssue()) {
+             switch (event.name) {
+                case "up":
+                case "k":
+                    if (conflictChoice() != 0) {
+                        setConflictChoice((conflictChoice() - 1) as 0 | 1 | 2)
+                    }
+                    break
+                case "down":
+                case "j":
+                    if (conflictChoice() != 2) {
+                        setConflictChoice((conflictChoice() + 1) as 0 | 1 | 2)
+                    }
+                    break
+                case "enter":
+                case "return":
+                    resolveConflict()
+                    break
+            }
+        }
+        return
+    }
 
     switch (event.name) {
       case "j":
@@ -402,12 +435,12 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
         flexDirection="column"
         width={modalWidth}
         height={modalHeight}
-        backgroundColor={colors.bg.secondary}
+        backgroundColor={colors().bg.secondary}
         borderStyle="rounded"
-        borderColor={colors.border.accent}
+        borderColor={colors().border.accent}
         overflow="hidden"
       >
-        <Show when={!!conflictIssue()} fallback={
+        <Show when={creating()} fallback={
           // Standard Issue List View
           <>
             {/* Header with Tabs */}
@@ -416,10 +449,10 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
               paddingLeft={1} 
               paddingRight={1} 
               justifyContent="space-between"
-              backgroundColor={colors.bg.secondary}
+              backgroundColor={colors().bg.secondary}
             >
               <box flexDirection="row" flexGrow={1} overflow="hidden" marginRight={2}>
-                 <text fg={colors.text.primary} attributes={BOLD}>
+                 <text fg={colors().text.primary} attributes={BOLD}>
                    {props.ownerRepo}
                  </text>
               </box>
@@ -429,7 +462,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
                 <For each={STATE_FILTERS}>
                   {(state) => (
                     <text
-                      fg={stateFilter() === state ? colors.accent.primary : colors.text.muted}
+                      fg={stateFilter() === state ? colors().accent.primary : colors().text.muted}
                       attributes={stateFilter() === state ? BOLD : 0}
                     >
                       {stateFilter() === state ? `[ ${state} ]` : `  ${state}  `}
@@ -448,19 +481,19 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
             >
               <Show when={loading()}>
                 <box justifyContent="center" alignItems="center" flexGrow={1}>
-                  <text fg={colors.text.muted}>Loading issues...</text>
+                  <text fg={colors().text.muted}>Loading issues...</text>
                 </box>
               </Show>
 
               <Show when={error() && !loading()}>
                 <box justifyContent="center" alignItems="center" flexGrow={1}>
-                  <text fg={colors.accent.error}>{error()}</text>
+                  <text fg={colors().accent.error}>{error()}</text>
                 </box>
               </Show>
 
               <Show when={!loading() && !error() && issues().length === 0}>
                 <box justifyContent="center" alignItems="center" flexGrow={1}>
-                  <text fg={colors.text.muted}>No issues found</text>
+                  <text fg={colors().text.muted}>No issues found</text>
                 </box>
               </Show>
 
@@ -476,14 +509,14 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
                       const isFocused = () => focusedIndex() === index()
                       const isSelected = () => selectedIndices().has(index())
 
-                      const textColor = () => isFocused() ? colors.text.primary : colors.text.secondary
-                      const mutedColor = () => isFocused() ? colors.text.primary : colors.text.muted
+                      const textColor = () => isFocused() ? colors().text.primary : colors().text.secondary
+                      const mutedColor = () => isFocused() ? colors().text.primary : colors().text.muted
 
                       return (
                         <box 
                           flexDirection="row" 
                           height={1} // Single line rows
-                          backgroundColor={isFocused() ? colors.bg.cardSelected : undefined}
+                          backgroundColor={isFocused() ? colors().bg.cardSelected : undefined}
                           paddingLeft={0}
                           paddingRight={1}
                           alignItems="center"
@@ -491,7 +524,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
                         >
                           {/* Focus Indicator */}
                           <box width={2}>
-                            <text fg={colors.accent.primary}>
+                            <text fg={colors().accent.primary}>
                               {isFocused() ? "▍" : " "}
                             </text>
                           </box>
@@ -500,7 +533,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
                           <box width={4}>
                             <text 
                               fg={isSelected() 
-                                ? (isFocused() ? colors.text.primary : colors.accent.success) 
+                                ? (isFocused() ? colors().text.primary : colors().accent.success) 
                                 : mutedColor()
                               } 
                               attributes={isSelected() ? BOLD : 0}
@@ -522,7 +555,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
                               text={issue.title}
                               width={30}
                               isActive={isFocused()}
-                              fg={isFocused() ? colors.text.primary : colors.text.secondary}
+                              fg={isFocused() ? colors().text.primary : colors().text.secondary}
                               attributes={isFocused() ? BOLD : 0}
                             />
                           </box>
@@ -550,17 +583,9 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
               </Show>
             </box>
 
-            {/* Creating indicator */}
-            <Show when={creating()}>
-              <box height={1} flexDirection="row" justifyContent="center" paddingBottom={1} gap={1}>
-                <text fg={colors.accent.primary}>{SPINNER_FRAMES[spinnerFrame()]}</text>
-                <text fg={colors.accent.primary}>Creating sessions...</text>
-              </box>
-            </Show>
-
             {/* Footer */}
             <Footer
-              bgColor={colors.bg.primary}
+              bgColor={colors().bg.primary}
               actions={[
                 { key: "Space", label: "Toggle" },
                 { key: "a", label: "All" },
@@ -574,75 +599,103 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
             />
           </>
         }>
-          {/* Conflict Resolution View */}
-          <box flexDirection="column" width="100%" height="100%">
-            <box flexDirection="column" flexGrow={1} padding={2} justifyContent="center" alignItems="center">
-              <text fg={colors.accent.warning} attributes={BOLD}>Worktree Conflict</text>
-              
-              <box height={1} />
-              
-              <text fg={colors.text.primary}>
-                Worktree for issue #{conflictIssue()?.number} already exists.
-              </text>
-              <text fg={colors.text.secondary}>
-                Please select an action:
-              </text>
-              
-              <box height={2} />
-              
-              {/* Options */}
-              <box flexDirection="column" gap={1} width={50}>
-			  {/* Continue worktree option*/}
-                <box flexDirection="row" gap={1}>
-                  <text fg={conflictChoice() === 0 ? colors.accent.primary : colors.text.muted}>
-                    {conflictChoice() === 0 ? "●" : "○"}
-                  </text>
-                  <text 
-                    fg={conflictChoice() === 0 ? colors.text.primary : colors.text.secondary}
-                    attributes={conflictChoice() === 0 ? BOLD : 0}
-                  >
-                    Continue with existing worktree
-                  </text>
-                </box>
+            {/* Creating / Conflict State */}
+            <Show when={!!conflictIssue()} fallback={
+                // Progress View
+                <box flexDirection="column" width="100%" height="100%" justifyContent="center" alignItems="center">
+                    <text fg={colors().accent.primary} attributes={BOLD}>Creating Sessions...</text>
+                    <box height={1} />
+                    <box flexDirection="row" gap={1}>
+                        <text fg={colors().accent.primary}>{SPINNER_FRAMES[spinnerFrame()]}</text>
+                        <text fg={colors().text.secondary}>
+                            Processing {successCount() + 1} of {selectedCount() || 1}
+                        </text>
+                    </box>
+                    
+                    {/* Current Issue being processed */}
+                    <Show when={pendingIndices().length > 0}>
+                        <box marginTop={1} padding={1} borderColor={colors().border.secondary} borderStyle="rounded">
+                           <text fg={colors().text.primary}>
+                               #{issues()[pendingIndices()[0]!]?.number} {truncate(issues()[pendingIndices()[0]!]?.title || "", 40)}
+                           </text>
+                        </box>
+                    </Show>
 
-                {/* Create new option */}
-                <box flexDirection="row" gap={1}>
-                  <text fg={conflictChoice() === 1 ? colors.accent.primary : colors.text.muted}>
-                    {conflictChoice() === 1 ? "●" : "○"}
-                  </text>
-                  <text 
-                    fg={conflictChoice() === 1 ? colors.text.primary : colors.text.secondary}
-                    attributes={conflictChoice() === 1 ? BOLD : 0}
-                  >
-                    Create new worktree ({suggestedName()})
-                  </text>
+                    <box height={2} />
+                    <text fg={colors().text.muted}>Please wait...</text>
                 </box>
-                
-                {/* Overwrite option */}
-                <box flexDirection="row" gap={1}>
-                  <text fg={conflictChoice() === 2 ? colors.accent.primary : colors.text.muted}>
-                    {conflictChoice() === 2 ? "●" : "○"}
-                  </text>
-                  <text 
-                    fg={conflictChoice() === 2 ? colors.text.primary : colors.text.secondary}
-                    attributes={conflictChoice() === 2 ? BOLD : 0}
-                  >
-                    Overwrite worktree
-                  </text>
+            }>
+                {/* Conflict Resolution View */}
+                <box flexDirection="column" width="100%" height="100%">
+                    <box flexDirection="column" flexGrow={1} padding={2} justifyContent="center" alignItems="center">
+                    <text fg={colors().accent.warning} attributes={BOLD}>Worktree Conflict</text>
+                    
+                    <box height={1} />
+                    
+                    <text fg={colors().text.primary}>
+                        Worktree for issue #{conflictIssue()?.number} already exists.
+                    </text>
+                    <text fg={colors().text.secondary}>
+                        Please select an action:
+                    </text>
+                    
+                    <box height={2} />
+                    
+                    {/* Options */}
+                    <box flexDirection="column" gap={1} width={50}>
+                    {/* Continue worktree option*/}
+                        <box flexDirection="row" gap={1}>
+                        <text fg={conflictChoice() === 0 ? colors().accent.primary : colors().text.muted}>
+                            {conflictChoice() === 0 ? "●" : "○"}
+                        </text>
+                        <text 
+                            fg={conflictChoice() === 0 ? colors().text.primary : colors().text.secondary}
+                            attributes={conflictChoice() === 0 ? BOLD : 0}
+                        >
+                            Continue with existing worktree
+                        </text>
+                        </box>
+
+                        {/* Create new option */}
+                        <box flexDirection="row" gap={1}>
+                        <text fg={conflictChoice() === 1 ? colors().accent.primary : colors().text.muted}>
+                            {conflictChoice() === 1 ? "●" : "○"}
+                        </text>
+                        <text 
+                            fg={conflictChoice() === 1 ? colors().text.primary : colors().text.secondary}
+                            attributes={conflictChoice() === 1 ? BOLD : 0}
+                        >
+                            Create new worktree ({suggestedName()})
+                        </text>
+                        </box>
+                        
+                        {/* Overwrite option */}
+                        <box flexDirection="row" gap={1}>
+                        <text fg={conflictChoice() === 2 ? colors().accent.primary : colors().text.muted}>
+                            {conflictChoice() === 2 ? "●" : "○"}
+                        </text>
+                        <text 
+                            fg={conflictChoice() === 2 ? colors().text.primary : colors().text.secondary}
+                            attributes={conflictChoice() === 2 ? BOLD : 0}
+                        >
+                            Overwrite worktree
+                        </text>
+                        </box>
+                    </box>
+                    </box>
+                    
+                    <Footer
+                    bgColor={colors().bg.primary}
+                    actions={[
+                        { key: "Enter", label: resolving() ? "Resolving..." : "Confirm" },
+                        { key: "Esc", label: "Cancel Batch" },
+                    ]}
+                    />
                 </box>
-              </box>
-            </box>
-            
-            <Footer
-              bgColor={colors.bg.primary}
-              actions={[
-                { key: "Enter", label: "Confirm" },
-                { key: "Esc", label: "Cancel" },
-              ]}
-            />
-          </box>
+            </Show>
         </Show>
       </box>
+
     </box>
   )
 }

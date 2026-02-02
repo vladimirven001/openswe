@@ -35,8 +35,6 @@ function warnInvalidEnv(varName: string, value: string, expected: string): void 
  * Supported variables:
  * - OPENSWE_BACKEND: "opencode" | "claude"
  * - OPENSWE_LOG_LEVEL: "debug" | "info" | "warn" | "error"
- * - OPENSWE_PR_AUTO_CREATE: "true" | "false"
- * - OPENSWE_PR_DRAFT: "true" | "false"
  */
 export function loadEnvConfig(): PartialConfig {
   const config: PartialConfig = {}
@@ -62,28 +60,6 @@ export function loadEnvConfig(): PartialConfig {
         logLevel,
         '"debug", "info", "warn", or "error"'
       )
-    }
-  }
-
-  // PR Auto Create
-  const prAutoCreate = process.env.OPENSWE_PR_AUTO_CREATE
-  if (prAutoCreate !== undefined) {
-    const parsed = parseBoolean(prAutoCreate)
-    if (parsed !== undefined) {
-      config.pr = { ...config.pr, autoCreate: parsed }
-    } else {
-      warnInvalidEnv("OPENSWE_PR_AUTO_CREATE", prAutoCreate, '"true" or "false"')
-    }
-  }
-
-  // PR Draft
-  const prDraft = process.env.OPENSWE_PR_DRAFT
-  if (prDraft !== undefined) {
-    const parsed = parseBoolean(prDraft)
-    if (parsed !== undefined) {
-      config.pr = { ...config.pr, draft: parsed }
-    } else {
-      warnInvalidEnv("OPENSWE_PR_DRAFT", prDraft, '"true" or "false"')
     }
   }
 

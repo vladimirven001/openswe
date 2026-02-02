@@ -46,7 +46,6 @@ CREATE TABLE IF NOT EXISTS sessions (
   attention_reason TEXT,
   retry_count INTEGER NOT NULL DEFAULT 0,
   tokens_used INTEGER NOT NULL DEFAULT 0,
-  pr_url TEXT,
   pid INTEGER,
   ai_session_data TEXT,                   -- JSON: {backend, sessionId, ...}
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

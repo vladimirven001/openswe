@@ -1,5 +1,5 @@
 import { For, Show } from "solid-js"
-import { colors } from "./theme"
+import { useColors } from "./theme"
 
 export interface FooterAction {
   key: string
@@ -15,12 +15,13 @@ export interface FooterProps {
 const BOLD = 1
 
 export function Footer(props: FooterProps) {
+  const colors = useColors()
   return (
     <box
       flexDirection="row"
       width="100%"
       height={1}
-      backgroundColor={props.bgColor || colors.bg.secondary}
+      backgroundColor={props.bgColor || colors().bg.secondary}
       paddingLeft={1}
       paddingRight={1}
       justifyContent="space-between"
@@ -31,10 +32,10 @@ export function Footer(props: FooterProps) {
         <For each={props.actions}>
           {(action) => (
             <box flexDirection="row" gap={1}>
-              <text fg={colors.accent.primary} attributes={BOLD}>
+              <text fg={colors().accent.primary} attributes={BOLD}>
                 {action.key}
               </text>
-              <text fg={colors.text.secondary}>{action.label}</text>
+              <text fg={colors().text.secondary}>{action.label}</text>
             </box>
           )}
         </For>
@@ -42,7 +43,7 @@ export function Footer(props: FooterProps) {
 
       {/* Message (Right) */}
       <Show when={props.message}>
-        <text fg={colors.text.muted}>{props.message}</text>
+        <text fg={colors().text.muted}>{props.message}</text>
       </Show>
     </box>
   )

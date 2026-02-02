@@ -5,9 +5,10 @@
  * Colors are derived from the theme system for consistency
  */
 
+import { createMemo, type Accessor } from "solid-js"
 import type { Status } from "../store"
 import type { ResolvedTheme } from "../theme/types"
-import { getDefaultTheme } from "../theme/context"
+import { getDefaultTheme, useTheme } from "../theme/context"
 
 // ============================================================================
 // Color Palette - Derived from Theme System
@@ -71,8 +72,23 @@ export function createColors(theme: ResolvedTheme) {
   }
 }
 
+/** Type for the colors object */
+export type Colors = ReturnType<typeof createColors>
+
 /** Default colors using the default theme (tokyonight) */
 export const colors = createColors(getDefaultTheme())
+
+/**
+ * Reactive hook to get colors that update when the theme changes
+ *
+ * Must be used within a component that is inside the ThemeProvider
+ *
+ * @returns Accessor to the current colors object
+ */
+export function useColors(): Accessor<Colors> {
+	const { theme } = useTheme()
+	return createMemo(() => createColors(theme()))
+}
 
 // ============================================================================
 // Border Styles
@@ -183,6 +199,7 @@ export const keybindings = {
   navigate: "j/k or ↑/↓",
   newSession: "n",
   issues: "i",
+  theme: "t",
   select: "Enter",
   help: "?",
   quit: "q",

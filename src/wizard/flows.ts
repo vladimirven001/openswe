@@ -8,7 +8,6 @@
 import {
   promptRepoInput,
   promptAiBackend,
-  promptAutoPr,
   promptAdoptRepo,
   promptFetchIssues,
   isCancelled,
@@ -48,8 +47,6 @@ export interface WizardResult {
   repoFullName?: string
   /** Selected AI backend */
   aiBackend?: AIBackendChoice
-  /** Selected auto PR setting */
-  autoPr?: boolean
 }
 
 // ============================================================================
@@ -92,7 +89,7 @@ async function checkPrerequisites(): Promise<{ ok: boolean; error?: string }> {
  * 2. Prompts for repository (or uses --repo flag value)
  * 3. Validates the repository exists
  * 4. Clones the repository
- * 5. Prompts for configuration (AI backend, max sessions, auto PR)
+ * 5. Prompts for configuration (AI backend)
  * 6. Saves configuration
  *
  * @param cwd - Current working directory (empty directory)
@@ -219,7 +216,6 @@ export async function runEmptyDirectoryWizard(
   // Save global config
   const globalConfig: PartialConfig = {
     ai: { backend: configResult.aiBackend },
-    pr: { autoCreate: configResult.autoPr },
   }
   await saveGlobalConfig(globalConfig)
 
@@ -237,7 +233,6 @@ export async function runEmptyDirectoryWizard(
     cancelled: false,
     repoFullName,
     aiBackend: configResult.aiBackend,
-    autoPr: configResult.autoPr,
   }
 }
 
@@ -329,7 +324,6 @@ export async function runExistingRepoWizard(
   // Save global config
   const globalConfig: PartialConfig = {
     ai: { backend: configResult.aiBackend },
-    pr: { autoCreate: configResult.autoPr },
   }
   await saveGlobalConfig(globalConfig)
 
@@ -347,7 +341,6 @@ export async function runExistingRepoWizard(
     cancelled: false,
     repoFullName,
     aiBackend: configResult.aiBackend,
-    autoPr: configResult.autoPr,
   }
 }
 
@@ -358,7 +351,6 @@ export async function runExistingRepoWizard(
 interface ConfigurationResult {
   cancelled: boolean
   aiBackend?: AIBackendChoice
-  autoPr?: boolean
 }
 
 /**
@@ -371,16 +363,9 @@ async function gatherConfiguration(): Promise<ConfigurationResult> {
     return { cancelled: true }
   }
 
-  // Auto PR
-  const autoPr = await promptAutoPr()
-  if (isCancelled(autoPr)) {
-    return { cancelled: true }
-  }
-
   return {
     cancelled: false,
     aiBackend: backend,
-    autoPr,
   }
 }
 
@@ -420,7 +405,6 @@ export async function runReconfigureWizard(
 
   const globalConfig: PartialConfig = {
     ai: { backend: configResult.aiBackend },
-    pr: { autoCreate: configResult.autoPr },
   }
   await saveGlobalConfig(globalConfig)
 
@@ -433,6 +417,5 @@ export async function runReconfigureWizard(
     cancelled: false,
     repoFullName,
     aiBackend: configResult.aiBackend,
-    autoPr: configResult.autoPr,
   }
 }

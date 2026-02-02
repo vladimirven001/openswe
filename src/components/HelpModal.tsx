@@ -7,7 +7,7 @@
 import { For } from "solid-js"
 import type { HelpModalProps } from "./types"
 import { Footer } from "./Footer"
-import { colors } from "./theme"
+import { useColors } from "./theme"
 import { useKeyboard } from "@opentui/solid"
 
 // Bold attribute constant
@@ -54,6 +54,7 @@ const KEY_SECTIONS: KeySection[] = [
 ]
 
 export function HelpModal(props: HelpModalProps) {
+  const colors = useColors()
   const modalWidth = 44
   const modalHeight = 24
 
@@ -64,8 +65,6 @@ export function HelpModal(props: HelpModalProps) {
         break
 	}
   })
-
-
 
   return (
     <box
@@ -82,9 +81,9 @@ export function HelpModal(props: HelpModalProps) {
         flexDirection="column"
         width={modalWidth}
         height={modalHeight}
-        backgroundColor={colors.bg.secondary}
+        backgroundColor={colors().bg.secondary}
         borderStyle="rounded"
-        borderColor={colors.border.accent}
+        borderColor={colors().border.accent}
         overflow="hidden"
       >
         {/* Header */}
@@ -94,7 +93,7 @@ export function HelpModal(props: HelpModalProps) {
           paddingLeft={1}
           paddingRight={1}
         >
-          <text fg={colors.text.primary} attributes={BOLD}>
+          <text fg={colors().text.primary} attributes={BOLD}>
             Help
           </text>
         </box>
@@ -105,7 +104,7 @@ export function HelpModal(props: HelpModalProps) {
             {(section) => (
               <box flexDirection="column" paddingTop={1}>
                 {/* Section title */}
-                <text fg={colors.accent.primary} attributes={BOLD}>
+                <text fg={colors().accent.primary} attributes={BOLD}>
                   {section.title}
                 </text>
                 {/* Keybindings */}
@@ -114,11 +113,11 @@ export function HelpModal(props: HelpModalProps) {
                     <box flexDirection="row" paddingLeft={2}>
                       {/* Fixed width box for key to ensure alignment */}
                       <box width={14}>
-                        <text fg={colors.text.primary}>
+                        <text fg={colors().text.primary}>
                           {binding.key}
                         </text>
                       </box>
-                      <text fg={colors.text.secondary}>
+                      <text fg={colors().text.secondary}>
                         {binding.description}
                       </text>
                     </box>
@@ -130,7 +129,7 @@ export function HelpModal(props: HelpModalProps) {
         </box>
 
         {/* Footer */}
-        <Footer actions={[{ key: "Esc", label: "Exit" }]} bgColor={colors.bg.primary} />
+        <Footer actions={[{ key: "Esc", label: "Exit" }]} bgColor={colors().bg.primary} />
       </box>
     </box>
   )

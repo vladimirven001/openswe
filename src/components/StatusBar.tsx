@@ -10,7 +10,7 @@ import { Show, For } from "solid-js"
 import type { StatusBarProps } from "./types"
 import type { ProviderBranding } from "../providers"
 import { Footer } from "./Footer"
-import { colors, keybindings } from "./theme"
+import { useColors, keybindings } from "./theme"
 
 // Bold attribute constant (bit 0 in text attributes)
 const BOLD = 1
@@ -34,7 +34,8 @@ function HeaderBar(props: {
   sessionId?: string
   providerBranding?: ProviderBranding
 }) {
-  const headerBg = () => props.providerBranding?.headerBackground ?? props.providerBranding?.accentColor ?? colors.accent.primary
+  const colors = useColors()
+  const headerBg = () => props.providerBranding?.headerBackground ?? props.providerBranding?.accentColor ?? colors().accent.primary
   const backendDisplay = () => props.providerBranding?.displayName ?? props.backend
 
   return (
@@ -48,20 +49,20 @@ function HeaderBar(props: {
       justifyContent="space-between"
     >
       <box flexDirection="row" gap={1}>
-        <text fg={colors.text.inverse} attributes={BOLD}>
+        <text fg={colors().text.inverse} attributes={BOLD}>
           OpenSWE
         </text>
         <Show when={props.repoName}>
-          <text fg={colors.text.inverse}>|</text>
-          <text fg={colors.text.inverse}>{props.repoName}</text>
+          <text fg={colors().text.inverse}>|</text>
+          <text fg={colors().text.inverse}>{props.repoName}</text>
         </Show>
       </box>
       <box flexDirection="row" gap={1}>
         <Show when={props.sessionId}>
-          <text fg={colors.text.inverse}>ID: {props.sessionId}</text>
+          <text fg={colors().text.inverse}>ID: {props.sessionId}</text>
         </Show>
         <Show when={backendDisplay()}>
-          <text fg={colors.text.inverse}>[{backendDisplay()}]</text>
+          <text fg={colors().text.inverse}>[{backendDisplay()}]</text>
         </Show>
       </box>
     </box>
@@ -74,6 +75,7 @@ function FooterBar() {
     { key: keybindings.newSession, label: "New" },
     { key: keybindings.issues, label: "Issues" },
     { key: "a", label: "AI" },
+    { key: keybindings.theme, label: "Theme" },
     { key: keybindings.help, label: "Help" },
     { key: keybindings.quit, label: "Quit" },
   ]

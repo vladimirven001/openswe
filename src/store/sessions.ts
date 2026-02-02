@@ -35,7 +35,6 @@ interface SessionRow {
   attention_reason: string | null
   retry_count: number
   tokens_used: number
-  pr_url: string | null
   pid: number | null
   ai_session_data: string | null
   created_at: string
@@ -64,7 +63,6 @@ function rowToSession(row: SessionRow): Session {
     attentionReason: row.attention_reason,
     retryCount: row.retry_count,
     tokensUsed: row.tokens_used,
-    prUrl: row.pr_url,
     pid: row.pid,
     aiSessionData: parseAISessionData(row.ai_session_data),
     createdAt: row.created_at,
@@ -207,9 +205,9 @@ export function createSession(data: CreateSessionInput): Session {
     `INSERT INTO sessions (
       id, name, issue_number, issue_title, issue_body, issue_url,
       worktree_path, branch_name, phase, status,
-      attention_reason, retry_count, tokens_used, pr_url, pid, ai_session_data,
+      attention_reason, retry_count, tokens_used, pid, ai_session_data,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'queued', NULL, 0, 0, NULL, NULL, ?, ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'queued', NULL, 0, 0, NULL, ?, ?, ?)`
   ).run(
     id,
     data.name,
@@ -240,7 +238,6 @@ export function createSession(data: CreateSessionInput): Session {
     attentionReason: null,
     retryCount: 0,
     tokensUsed: 0,
-    prUrl: null,
     pid: null,
     aiSessionData: data.aiSessionData ?? null,
     createdAt: now,
@@ -299,10 +296,6 @@ export function updateSession(id: string, data: UpdateSessionInput): Session {
   if (data.tokensUsed !== undefined) {
     updates.push("tokens_used = ?")
     values.push(data.tokensUsed)
-  }
-  if (data.prUrl !== undefined) {
-    updates.push("pr_url = ?")
-    values.push(data.prUrl)
   }
   if (data.pid !== undefined) {
     updates.push("pid = ?")
@@ -383,23 +376,6 @@ export function updateTokensUsed(id: string, tokens: number): void {
 
   db.query("UPDATE sessions SET tokens_used = ?, updated_at = ? WHERE id = ?").run(
     tokens,
-    now,
-    id
-  )
-}
-
-/**
- * Set the PR URL for a session
- *
- * @param id - Session ID
- * @param url - PR URL
- */
-export function setPrUrl(id: string, url: string): void {
-  const db = getDatabase()
-  const now = nowISO()
-
-  db.query("UPDATE sessions SET pr_url = ?, updated_at = ? WHERE id = ?").run(
-    url,
     now,
     id
   )

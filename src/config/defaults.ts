@@ -20,19 +20,6 @@ export const DEFAULT_CONFIG: GlobalConfig = {
     },
   },
 
-  pr: {
-    autoCreate: true,
-    draft: true,
-    titleTemplate: "{{issue_title}}",
-    bodyTemplate: `Fixes #{{issue_number}}
-
-## Summary
-{{ai_summary}}
-
----
-*Automated by OpenSWE*`,
-  },
-
   keybindings: {
     navigateUp: "k",
     navigateDown: "j",

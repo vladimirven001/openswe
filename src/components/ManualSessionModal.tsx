@@ -9,7 +9,7 @@ import { useKeyboard } from "@opentui/solid"
 import type { ManualSessionModalProps } from "./types"
 import { createManualSession } from "./session-utils"
 import { Footer } from "./Footer"
-import { colors } from "./theme"
+import { useColors } from "./theme"
 import { logger } from "../utils/logger"
 
 // Bold attribute constant
@@ -17,6 +17,7 @@ const BOLD = 1
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
 export function ManualSessionModal(props: ManualSessionModalProps) {
+  const colors = useColors()
   const modalWidth = 50
   const maxNameLength = 40
 
@@ -123,14 +124,14 @@ export function ManualSessionModal(props: ManualSessionModalProps) {
         flexDirection="column"
         width={modalWidth}
         height={modalHeight()}
-        backgroundColor={colors.bg.secondary}
+        backgroundColor={colors().bg.secondary}
         borderStyle="rounded"
-        borderColor={colors.border.accent}
+        borderColor={colors().border.accent}
         overflow="hidden"
       >
         {/* Header */}
         <box height={1} justifyContent="center" paddingLeft={1} paddingRight={1}>
-          <text fg={colors.text.primary} attributes={BOLD}>
+          <text fg={colors().text.primary} attributes={BOLD}>
             New Manual Session
           </text>
         </box>
@@ -138,24 +139,24 @@ export function ManualSessionModal(props: ManualSessionModalProps) {
         {/* Content area */}
         <box flexDirection="column" flexGrow={1} paddingLeft={2} paddingRight={2} paddingTop={1}>
           <box height={1}>
-            <text fg={colors.text.secondary}>Name:</text>
+            <text fg={colors().text.secondary}>Name:</text>
           </box>
 
           <box height={1}>
-            <text fg={colors.text.primary}>
+            <text fg={colors().text.primary}>
               {name() || "Type a session name"}
             </text>
           </box>
 
           <Show when={error()}>
             <box height={1}>
-              <text fg={colors.accent.error}>{error()}</text>
+              <text fg={colors().accent.error}>{error()}</text>
             </box>
           </Show>
 
           <Show when={creating()}>
             <box height={1} justifyContent="center">
-              <text fg={colors.accent.primary}>
+              <text fg={colors().accent.primary}>
                 {SPINNER_FRAMES[spinnerFrame()]} Creating session...
               </text>
             </box>
@@ -168,7 +169,7 @@ export function ManualSessionModal(props: ManualSessionModalProps) {
             { key: "Enter", label: "Create" },
             { key: "Esc", label: "Cancel" },
           ]}
-          bgColor={colors.bg.primary}
+          bgColor={colors().bg.primary}
         />
       </box>
     </box>

@@ -9,12 +9,13 @@ import { useKeyboard } from "@opentui/solid"
 import type { ProviderSwitcherModalProps } from "./types"
 import { getAllProviders, type Provider } from "../providers"
 import { Footer } from "./Footer"
-import { colors } from "./theme"
+import { useColors } from "./theme"
 
 // Bold attribute constant
 const BOLD = 1
 
 export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
+  const colors = useColors()
   const [providers, setProviders] = createSignal<Provider[]>([])
   const [focusedIndex, setFocusedIndex] = createSignal(0)
 
@@ -79,9 +80,9 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
         flexDirection="column"
         width={modalWidth}
         height={modalHeight}
-        backgroundColor={colors.bg.secondary}
+        backgroundColor={colors().bg.secondary}
         borderStyle="rounded"
-        borderColor={colors.border.accent}
+        borderColor={colors().border.accent}
         overflow="hidden"
       >
         {/* Header */}
@@ -92,7 +93,7 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
           paddingRight={1}
           marginBottom={1}
         >
-          <text fg={colors.text.primary} attributes={BOLD}>
+          <text fg={colors().text.primary} attributes={BOLD}>
             Select AI Provider
           </text>
         </box>
@@ -109,11 +110,11 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
                   height={1}
                   flexDirection="row"
                   alignItems="center"
-                  backgroundColor={isFocused() ? colors.bg.cardSelected : undefined}
+                  backgroundColor={isFocused() ? colors().bg.cardSelected : undefined}
                 >
                   {/* Focus Indicator */}
                   <box width={2}>
-                    <text fg={colors.accent.primary}>
+                    <text fg={colors().accent.primary}>
                       {isFocused() ? "▍" : " "}
                     </text>
                   </box>
@@ -121,7 +122,7 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
                   {/* Selection Indicator */}
                   <box width={4}>
                     <text 
-                      fg={isCurrent() ? colors.accent.success : colors.text.muted}
+                      fg={isCurrent() ? colors().accent.success : colors().text.muted}
                       attributes={isCurrent() ? BOLD : 0}
                     >
                       {isCurrent() ? "[✓]" : "[ ]"}
@@ -130,7 +131,7 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
 
                   {/* Provider Name */}
                   <text 
-                    fg={isFocused() ? colors.text.primary : colors.text.secondary}
+                    fg={isFocused() ? colors().text.primary : colors().text.secondary}
                     attributes={isFocused() ? BOLD : 0}
                   >
                     {provider.branding.displayName}
@@ -147,7 +148,7 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
             { key: "Enter", label: "Select" },
             { key: "Esc", label: "Cancel" }
           ]} 
-          bgColor={colors.bg.primary} 
+          bgColor={colors().bg.primary} 
         />
       </box>
     </box>

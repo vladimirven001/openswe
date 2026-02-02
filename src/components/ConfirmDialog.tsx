@@ -8,12 +8,13 @@ import { For } from "solid-js"
 import { Footer } from "./Footer"
 import { ScrollableText } from "./ScrollableText"
 import type { ConfirmDialogProps } from "./types"
-import { colors } from "./theme"
+import { useColors } from "./theme"
 
 // Bold attribute constant
 const BOLD = 1
 
 export function ConfirmDialog(props: ConfirmDialogProps) {
+  const colors = useColors()
   const modalWidth = 45
 
   // Split message into lines
@@ -36,9 +37,9 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
         flexDirection="column"
         width={modalWidth}
         height={modalHeight()}
-        backgroundColor={colors.bg.secondary}
+        backgroundColor={colors().bg.secondary}
         borderStyle="rounded"
-        borderColor={colors.border.accent}
+        borderColor={colors().border.accent}
         overflow="hidden"
       >
         {/* Header / Title */}
@@ -48,7 +49,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
           paddingLeft={1}
           paddingRight={1}
         >
-          <text fg={colors.text.primary} attributes={BOLD}>
+          <text fg={colors().text.primary} attributes={BOLD}>
             {props.title}
           </text>
         </box>
@@ -64,10 +65,10 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
         >
           <For each={messageLines()}>
             {(line) => (
-              <ScrollableText 
-                text={line || " "} 
+              <ScrollableText
+                text={line || " "}
                 width={38}
-                fg={colors.text.primary}
+                fg={colors().text.primary}
               />
             )}
           </For>
@@ -79,7 +80,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
             { key: "Enter", label: "Confirm" },
             { key: "Esc", label: "Cancel" },
           ]}
-          bgColor={colors.bg.primary}
+          bgColor={colors().bg.primary}
         />
       </box>
     </box>

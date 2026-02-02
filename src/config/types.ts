@@ -34,14 +34,6 @@ export interface AIConfig {
   claude: ClaudeConfig
 }
 
-/** Pull request automation configuration */
-export interface PRConfig {
-  autoCreate: boolean
-  draft: boolean
-  titleTemplate: string
-  bodyTemplate: string
-}
-
 /** Keyboard shortcut configuration */
 export interface KeybindingsConfig {
   navigateUp: string
@@ -76,7 +68,6 @@ export interface UIConfig {
 /** Complete global configuration */
 export interface GlobalConfig {
   ai: AIConfig
-  pr: PRConfig
   keybindings: KeybindingsConfig
   advanced: AdvancedConfig
   ui: UIConfig

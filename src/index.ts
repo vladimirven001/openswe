@@ -101,7 +101,7 @@ async function main() {
   // Apply log level from merged config
   setLogLevel(config.advanced.logLevel)
 
-  logger.info("OpenSWE starting...")
+  logger.debug("OpenSWE starting...")
   logger.debug("Config file path:", getConfigPath())
   logger.debug("Loaded configuration:", config)
 
@@ -257,11 +257,11 @@ async function handleExistingRepo(
     debug: args.debug,
   })
 
-  logger.info("")
+  logger.debug("")
   logConfigSummary(updatedConfig)
-  logger.info("")
-  logger.info("OpenSWE initialized (Phase 4 - wizard complete)")
-  logger.info("Launching TUI...")
+  logger.debug("")
+  logger.debug("OpenSWE initialized (Phase 4 - wizard complete)")
+  logger.debug("Launching TUI...")
 
   await handleExistingProject(
     {
@@ -353,10 +353,9 @@ async function showStatus(config: GlobalConfig, workspace: WorkspaceResult): Pro
  * Log configuration summary
  */
 function logConfigSummary(config: GlobalConfig): void {
-  logger.info("Configuration:")
-  logger.info(`  AI Backend: ${config.ai.backend}`)
-  logger.info(`  Log Level: ${config.advanced.logLevel}`)
-  logger.info(`  Auto PR: ${config.pr.autoCreate} (draft: ${config.pr.draft})`)
+  logger.debug("Configuration:")
+  logger.debug(`  AI Backend: ${config.ai.backend}`)
+  logger.debug(`  Log Level: ${config.advanced.logLevel}`)
 }
 
 // ============================================================================

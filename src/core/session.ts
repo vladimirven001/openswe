@@ -2,7 +2,7 @@
  * Session lifecycle manager (Tmux Backend)
  *
  * Coordinates Tmux sessions, output parsing, and state transitions.
- * Handles PR automation when sessions complete.
+ * Handles session completion.
  */
 
 import {
@@ -12,7 +12,6 @@ import {
   updateSessionPhase,
   incrementRetryCount,
   setPid,
-  setPrUrl,
   setAISessionData,
   setLines,
   isValidPhase,
@@ -23,8 +22,6 @@ import type { GlobalConfig, AIBackend } from "../config"
 import { createParser } from "./parser"
 import type { ParsedEvent } from "./parser"
 import { TmuxManager } from "./tmux"
-import { pushBranch, getCommitsAhead, getDefaultBranch } from "../git"
-import { createPR, getExistingPR } from "../github"
 import { logger } from "../utils/logger"
 import { getSessionLogPath } from "../workspace/paths"
 import { dirname } from "path"
@@ -349,7 +346,7 @@ export class SessionManager {
       case "done":
         updateSessionPhase(sessionId, "completed")
         this.handleSessionCompletion(sessionId).catch((err) => {
-          logger.error(`PR creation failed for ${sessionId}:`, err)
+          logger.error(`Session completion handler failed for ${sessionId}:`, err)
         })
         break
     }
@@ -377,55 +374,8 @@ export class SessionManager {
     const session = getSession(sessionId)
     if (!session) return
 
-    if (!this.config.pr.autoCreate) {
-      this.completeSession(sessionId)
-      logger.info(`Session ${session.name} completed (auto PR disabled)`)
-      return
-    }
-
-    const baseBranch = await getDefaultBranch(session.worktreePath) ?? "main"
-    const commitsAhead = await getCommitsAhead(session.worktreePath, baseBranch)
-    if (commitsAhead === 0) {
-      this.completeSession(sessionId)
-      logger.info(`Session ${session.name} completed (no commits to push)`)
-      return
-    }
-
-    logger.info(`Session ${session.name}: ${commitsAhead} commits ahead, pushing branch...`)
-    const pushResult = await pushBranch(session.worktreePath, session.branchName, true)
-    if (!pushResult.success) {
-      updateSessionStatus(sessionId, "needs_attention", `Push failed: ${pushResult.error}`)
-      return
-    }
-
-    const existingPR = await getExistingPR(session.worktreePath, session.branchName)
-    if (existingPR) {
-      setPrUrl(sessionId, existingPR)
-      this.completeSession(sessionId)
-      logger.info(`Session ${session.name} completed (existing PR: ${existingPR})`)
-      return
-    }
-
-    logger.info(`Session ${session.name}: Creating PR...`)
-    const prResult = await createPR({
-      repoPath: session.worktreePath,
-      branchName: session.branchName,
-      baseBranch,
-      issueNumber: session.issueNumber,
-      issueTitle: session.issueTitle,
-      draft: this.config.pr.draft,
-      titleTemplate: this.config.pr.titleTemplate,
-      bodyTemplate: this.config.pr.bodyTemplate,
-    })
-
-    if (!prResult.success) {
-      updateSessionStatus(sessionId, "needs_attention", `PR creation failed: ${prResult.error}`)
-      return
-    }
-
-    setPrUrl(sessionId, prResult.prUrl!)
     this.completeSession(sessionId)
-    logger.info(`Session ${session.name} completed - PR created: ${prResult.prUrl}`)
+    logger.info(`Session ${session.name} completed`)
   }
 
   private completeSession(sessionId: string) {

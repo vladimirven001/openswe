@@ -5,7 +5,7 @@
 import { For } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import type { Session } from "../store"
-import { colors } from "./theme"
+import { useColors } from "./theme"
 
 export interface SessionTerminalProps {
   session: Session
@@ -15,6 +15,8 @@ export interface SessionTerminalProps {
 }
 
 export function SessionTerminal(props: SessionTerminalProps) {
+  const colors = useColors()
+
   // Handle keyboard input
   useKeyboard((event) => {
     // Handle exit shortcut (Ctrl+C or Esc)
@@ -47,21 +49,21 @@ export function SessionTerminal(props: SessionTerminalProps) {
       flexDirection="column"
       width="100%"
       height="100%"
-      backgroundColor={colors.bg.primary}
+      backgroundColor={colors().bg.primary}
     >
       {/* Header */}
       <box
         height={1}
         width="100%"
-        backgroundColor={colors.bg.secondary}
+        backgroundColor={colors().bg.secondary}
         paddingLeft={1}
         paddingRight={1}
         justifyContent="space-between"
       >
-        <text fg={colors.text.primary} attributes={1}>
+        <text fg={colors().text.primary} attributes={1}>
           Terminal: {props.session.name}
         </text>
-        <text fg={colors.text.muted}>
+        <text fg={colors().text.muted}>
           [Esc] Detach
         </text>
       </box>
@@ -78,7 +80,7 @@ export function SessionTerminal(props: SessionTerminalProps) {
       >
         <For each={props.lines}>
           {(line) => (
-            <text fg={colors.text.primary}>{line || " "}</text>
+            <text fg={colors().text.primary}>{line || " "}</text>
           )}
         </For>
       </scrollbox>

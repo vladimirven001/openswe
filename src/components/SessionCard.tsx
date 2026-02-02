@@ -8,14 +8,15 @@
 import type { SessionCardProps } from "./types"
 import { STATUS_ICONS } from "./types"
 import { ScrollableText } from "./ScrollableText"
-import { colors } from "./theme"
+import { useColors } from "./theme"
 
 // Bold attribute constant
 const BOLD = 1
 
 export function SessionCard(props: SessionCardProps) {
+  const colors = useColors()
   const statusIcon = () => STATUS_ICONS[props.session.status]
-  const statusColor = () => colors.status[props.session.status]
+  const statusColor = () => colors().status[props.session.status]
   
   // Calculate width for the name scrolling area
   // availableWidth is total inner width of the card
@@ -33,10 +34,10 @@ export function SessionCard(props: SessionCardProps) {
       paddingTop={0}
       paddingBottom={0}
       backgroundColor={
-        props.isSelected ? colors.bg.cardSelected : colors.bg.card
+        props.isSelected ? colors().bg.cardSelected : colors().bg.card
       }
       borderStyle={props.isSelected ? "rounded" : "single"}
-      borderColor={props.isSelected ? colors.accent.primary : colors.border.primary}
+      borderColor={props.isSelected ? colors().accent.primary : colors().border.primary}
       overflow="hidden"
       justifyContent="space-between"
       alignItems="center"
@@ -50,7 +51,7 @@ export function SessionCard(props: SessionCardProps) {
           text={props.session.name}
           width={nameWidth()}
           isActive={props.isSelected}
-          fg={colors.text.primary}
+          fg={colors().text.primary}
           attributes={props.isSelected ? BOLD : 0}
         />
       </box>

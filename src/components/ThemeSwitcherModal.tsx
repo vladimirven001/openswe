@@ -9,13 +9,14 @@ import { useKeyboard } from "@opentui/solid"
 import type { ThemeSwitcherModalProps } from "./types"
 import { useTheme } from "../theme"
 import { Footer } from "./Footer"
-import { colors } from "./theme"
+import { useColors } from "./theme"
 
 // Bold attribute constant
 const BOLD = 1
 
 export function ThemeSwitcherModal(props: ThemeSwitcherModalProps) {
   const { availableThemes } = useTheme()
+  const colors = useColors()
   const [focusedIndex, setFocusedIndex] = createSignal(0)
   
   // Viewport state for scrolling
@@ -126,7 +127,7 @@ export function ThemeSwitcherModal(props: ThemeSwitcherModalProps) {
 
   const modalWidth = 50
   // Header + List + Footer + Padding
-  const modalHeight = VIEWPORT_HEIGHT + 4 
+  const modalHeight = VIEWPORT_HEIGHT + 6
 
   return (
     <box
@@ -142,9 +143,9 @@ export function ThemeSwitcherModal(props: ThemeSwitcherModalProps) {
         flexDirection="column"
         width={modalWidth}
         height={modalHeight}
-        backgroundColor={colors.bg.secondary}
+        backgroundColor={colors().bg.secondary}
         borderStyle="rounded"
-        borderColor={colors.border.accent}
+        borderColor={colors().border.accent}
         overflow="hidden"
       >
         {/* Header */}
@@ -155,38 +156,38 @@ export function ThemeSwitcherModal(props: ThemeSwitcherModalProps) {
           paddingRight={1}
           marginBottom={1}
         >
-          <text fg={colors.text.primary} attributes={BOLD}>
+          <text fg={colors().text.primary} attributes={BOLD}>
             Select Theme ({focusedIndex() + 1}/{themes().length})
           </text>
         </box>
 
         {/* List Container with Scrollbar */}
-        <box flexDirection="row" flexGrow={1} paddingLeft={2} paddingRight={1}>
+        <box flexDirection="row" flexGrow={1} paddingLeft={2} paddingRight={1} marginBottom={1}>
           {/* List */}
           <box flexDirection="column" flexGrow={1}>
             <For each={visibleThemes()}>
               {(item) => {
                 const isFocused = () => item.originalIndex === focusedIndex()
                 const isCurrent = () => item.name === props.currentTheme
-                
+
                 return (
                   <box
                     height={1}
                     flexDirection="row"
                     alignItems="center"
-                    backgroundColor={isFocused() ? colors.bg.cardSelected : undefined}
+                    backgroundColor={isFocused() ? colors().bg.cardSelected : undefined}
                   >
                     {/* Focus Indicator */}
                     <box width={2}>
-                      <text fg={colors.accent.primary}>
+                      <text fg={colors().accent.primary}>
                         {isFocused() ? "▍" : " "}
                       </text>
                     </box>
 
                     {/* Selection Indicator */}
                     <box width={4}>
-                      <text 
-                        fg={isCurrent() ? colors.accent.success : colors.text.muted}
+                      <text
+                        fg={isCurrent() ? colors().accent.success : colors().text.muted}
                         attributes={isCurrent() ? BOLD : 0}
                       >
                         {isCurrent() ? "[✓]" : "[ ]"}
@@ -194,8 +195,8 @@ export function ThemeSwitcherModal(props: ThemeSwitcherModalProps) {
                     </box>
 
                     {/* Theme Name */}
-                    <text 
-                      fg={isFocused() ? colors.text.primary : colors.text.secondary}
+                    <text
+                      fg={isFocused() ? colors().text.primary : colors().text.secondary}
                       attributes={isFocused() ? BOLD : 0}
                     >
                       {item.name}
@@ -212,10 +213,10 @@ export function ThemeSwitcherModal(props: ThemeSwitcherModalProps) {
               <>
                 {/* Track above thumb */}
                 <box height={scrollbarInfo()!.thumbTop} />
-                
+
                 {/* Thumb */}
                 <box height={scrollbarInfo()!.thumbHeight}>
-                  <text fg={colors.border.accent}>│</text>
+                  <text fg={colors().border.accent}>|</text>
                 </box>
               </>
             )}
@@ -223,12 +224,12 @@ export function ThemeSwitcherModal(props: ThemeSwitcherModalProps) {
         </box>
 
         {/* Footer */}
-        <Footer 
+        <Footer
           actions={[
             { key: "Enter", label: "Select" },
             { key: "Esc", label: "Cancel" }
-          ]} 
-          bgColor={colors.bg.primary} 
+          ]}
+          bgColor={colors().bg.primary}
         />
       </box>
     </box>
