@@ -223,7 +223,6 @@ export async function runEmptyDirectoryWizard(
 
   logSuccess("Created .openswe/ directory")
   logSuccess("Created .worktrees/ directory")
-  logSuccess("Updated .gitignore")
   logSuccess("Saved configuration")
 
   outro("Setup complete! OpenSWE is ready to use.")
@@ -331,7 +330,6 @@ export async function runExistingRepoWizard(
 
   logSuccess("Created .openswe/ directory")
   logSuccess("Created .worktrees/ directory")
-  logSuccess("Updated .gitignore")
   logSuccess("Saved configuration")
 
   outro("Setup complete! OpenSWE is ready to use.")

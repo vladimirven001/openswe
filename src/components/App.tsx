@@ -500,6 +500,7 @@ export function App(props: AppProps) {
         <ManualSessionModal
           projectRoot={props.projectRoot}
           currentBackend={props.config.ai.backend}
+          sessionManager={sessionManager}
           onClose={() => setActiveModal("none")}
           onSessionCreated={() => loadSessions()}
         />

@@ -66,17 +66,31 @@ export function ManualSessionModal(props: ManualSessionModalProps) {
       aiSessionData: { backend: props.currentBackend }
     })
 
-    if (result.success) {
-      logger.debug("Manual session created", { sessionId: result.session?.id })
-      props.onSessionCreated()
-      props.onClose()
-    } else {
+    if (!result.success || !result.session) {
       const message = result.error ?? "Failed to create session"
       logger.warn("Manual session creation failed", message)
       setError(message)
+      setCreating(false)
+      return
     }
 
-    setCreating(false)
+    logger.debug("Manual session created", { sessionId: result.session.id })
+
+    // Start the session (spawns opencode in tmux)
+    try {
+      await props.sessionManager.startSession({
+        sessionId: result.session.id,
+        // No prompt - launches interactive opencode TUI
+      })
+      logger.debug("Manual session started", { sessionId: result.session.id })
+    } catch (err) {
+      // Session created but failed to start - still close modal
+      // User can try to start it manually by pressing Enter
+      logger.error("Failed to start session:", err)
+    }
+
+    props.onSessionCreated()
+    props.onClose()
   }
 
   const extractChar = (event: { name?: string; sequence?: string }) => {

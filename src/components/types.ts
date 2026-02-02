@@ -5,6 +5,7 @@
 import type { Session, Phase, Status, ProjectState } from "../store"
 import type { GlobalConfig, AIBackend } from "../config"
 import type { ProviderBranding } from "../providers"
+import type { SessionManager } from "../core/session"
 
 // ============================================================================
 // Constants
@@ -129,6 +130,8 @@ export interface ManualSessionModalProps {
   projectRoot: string
   /** Current AI backend */
   currentBackend: AIBackend
+  /** Session manager for starting the session */
+  sessionManager: SessionManager
   /** Callback when modal is closed */
   onClose: () => void
   /** Callback when sessions are created (for refreshing the list) */
