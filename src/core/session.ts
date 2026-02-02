@@ -31,7 +31,7 @@ import type { Provider } from "../providers"
 
 export interface StartSessionOptions {
   sessionId: string
-  prompt: string
+  prompt?: string
   resumeSessionId?: string
   aiSessionData?: AISessionData | null
 }
@@ -162,8 +162,8 @@ export class SessionManager {
     try {
       updateSessionStatus(session.id, "active")
 
-      // Auto-transition to planning phase
-      updateSessionPhase(session.id, "planning")
+      // Auto-transition phase: planning if prompt-driven, working if interactive
+      updateSessionPhase(session.id, options.prompt ? "planning" : "working")
 
       if (options.aiSessionData !== undefined) {
         setAISessionData(session.id, options.aiSessionData)

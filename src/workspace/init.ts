@@ -3,18 +3,14 @@
  *
  * Handles creating and setting up a new OpenSWE project:
  * - Create .openswe/ directory structure
- * - Update .gitignore
- * - (Database initialization is handled in Phase 5)
+ * - (Database initialization is handled separately)
  */
 
-import { join } from "path"
 import { mkdir } from "fs/promises"
 import {
   getOpenSWEDir,
   getWorktreesDir,
   getLogsDir,
-  OPENSWE_DIR,
-  WORKTREES_DIR,
 } from "./paths"
 
 // ============================================================================
@@ -37,23 +33,7 @@ export interface InitResult {
   opensweDir: string
   /** Path to .worktrees directory */
   worktreesDir: string
-  /** Whether .gitignore was updated */
-  gitignoreUpdated: boolean
 }
-
-// ============================================================================
-// Gitignore Entries
-// ============================================================================
-
-/** Lines to add to .gitignore */
-const GITIGNORE_ENTRIES = `
-# OpenSWE
-${OPENSWE_DIR}/
-${WORKTREES_DIR}/
-`
-
-/** Header comment for OpenSWE section in .gitignore */
-const GITIGNORE_HEADER = "# OpenSWE"
 
 // ============================================================================
 // Directory Creation
@@ -82,59 +62,14 @@ export async function createWorktreesDirectory(projectRoot: string): Promise<voi
 }
 
 // ============================================================================
-// Gitignore Management
-// ============================================================================
-
-/**
- * Check if .gitignore already contains OpenSWE entries
- * @param content - Current .gitignore content
- */
-function hasOpenSWEEntries(content: string): boolean {
-  return content.includes(GITIGNORE_HEADER) ||
-         content.includes(`${OPENSWE_DIR}/`) ||
-         content.includes(`${WORKTREES_DIR}/`)
-}
-
-/**
- * Update .gitignore to include OpenSWE entries
- * Creates the file if it doesn't exist
- *
- * @param projectRoot - Absolute path to the project root
- * @returns true if file was updated, false if already had entries
- */
-export async function updateGitignore(projectRoot: string): Promise<boolean> {
-  const gitignorePath = join(projectRoot, ".gitignore")
-  const file = Bun.file(gitignorePath)
-
-  let existingContent = ""
-  if (await file.exists()) {
-    existingContent = await file.text()
-  }
-
-  // Check if already has our entries
-  if (hasOpenSWEEntries(existingContent)) {
-    return false
-  }
-
-  // Append our entries (with a newline separator if file has content)
-  const separator = existingContent.length > 0 && !existingContent.endsWith("\n")
-    ? "\n"
-    : ""
-  const newContent = existingContent + separator + GITIGNORE_ENTRIES.trimStart()
-
-  await Bun.write(gitignorePath, newContent)
-  return true
-}
-
-// ============================================================================
 // Full Initialization
 // ============================================================================
 
 /**
  * Initialize a new OpenSWE project
  *
- * This creates the necessary directory structure and updates .gitignore.
- * Note: Database initialization is handled separately in Phase 5.
+ * This creates the necessary directory structure.
+ * Note: Database initialization is handled separately.
  *
  * @param projectRoot - Absolute path to the project root
  * @param repoInfo - Information about the repository (optional, for logging)
@@ -151,14 +86,10 @@ export async function initProject(
   await createOpenSWEDirectory(projectRoot)
   await createWorktreesDirectory(projectRoot)
 
-  // Update .gitignore
-  const gitignoreUpdated = await updateGitignore(projectRoot)
-
   return {
     projectRoot,
     opensweDir,
     worktreesDir,
-    gitignoreUpdated,
   }
 }
 

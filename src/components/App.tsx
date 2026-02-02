@@ -304,7 +304,7 @@ export function App(props: AppProps) {
             if (session.status === "queued" || session.status === "paused") {
               await sessionManager.startSession({
                 sessionId: session.id,
-                prompt: generateSWEPrompt(session),
+                prompt: session.issueNumber ? generateSWEPrompt(session) : undefined,
                 resumeSessionId: session.aiSessionData?.sessionId,
               })
             }

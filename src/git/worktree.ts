@@ -6,7 +6,6 @@
  * enabling parallel work on different issues.
  */
 
-import { join } from "path"
 import { getWorktreesDir, getWorktreePath, generateBranchName, WORKTREES_DIR } from "../workspace/paths"
 import { logger } from "../utils/logger"
 
@@ -43,7 +42,7 @@ export interface WorktreeResult {
 // ============================================================================
 
 /**
- * Ensure the .worktrees directory exists and is in .gitignore
+ * Ensure the .worktrees directory exists
  *
  * @param projectRoot - Absolute path to the project root
  */
@@ -53,35 +52,6 @@ export async function ensureWorktreesDir(projectRoot: string): Promise<void> {
   // Create directory if it doesn't exist
   const { mkdir } = await import("fs/promises")
   await mkdir(worktreesDir, { recursive: true })
-
-  // Add to .gitignore if not already present
-  const gitignorePath = join(projectRoot, ".gitignore")
-  const gitignoreEntry = `${WORKTREES_DIR}/`
-
-  try {
-    const file = Bun.file(gitignorePath)
-    const content = await file.exists() ? await file.text() : ""
-
-    // Check if already ignored
-    const lines = content.split("\n")
-    const normalize = (line: string) => line.trim().replace(/\/$/, "")
-    const hasEntry = lines.some((line) => {
-      const trimmed = line.trim()
-      if (!trimmed || trimmed.startsWith("#")) return false
-      return normalize(trimmed) === WORKTREES_DIR
-    })
-
-    if (!hasEntry) {
-      // Add entry at the end
-      const newContent = content.endsWith("\n") || content === ""
-        ? content + gitignoreEntry + "\n"
-        : content + "\n" + gitignoreEntry + "\n"
-      await Bun.write(gitignorePath, newContent)
-    }
-  } catch {
-    // .gitignore doesn't exist or can't be read - create it
-    await Bun.write(gitignorePath, gitignoreEntry + "\n")
-  }
 }
 
 // ============================================================================

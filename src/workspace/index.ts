@@ -4,7 +4,7 @@
  * Provides utilities for workspace detection and initialization:
  * - Path utilities for .openswe/, .worktrees/, etc.
  * - Workspace type detection (existing-project, existing-repo, empty)
- * - Project initialization (directory creation, gitignore updates)
+ * - Project initialization (directory creation)
  */
 
 // Re-export all path utilities
@@ -52,7 +52,6 @@ export {
   initProject,
   createOpenSWEDirectory,
   createWorktreesDirectory,
-  updateGitignore,
   isProjectInitialized,
   cleanupProject,
 } from "./init"

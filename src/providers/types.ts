@@ -34,13 +34,13 @@ export interface Provider {
 	/**
 	 * Build the spawn command for starting an AI session
 	 * @param session - Session to start
-	 * @param prompt - Prompt to send to the AI
+	 * @param prompt - Optional prompt to send to the AI (omit for interactive mode)
 	 * @param resumeSessionId - Optional session ID to resume
 	 * @param config - Provider-specific configuration
 	 */
 	buildSpawnCommand(
 		session: Session,
-		prompt: string,
+		prompt?: string,
 		resumeSessionId?: string,
 		config?: Record<string, unknown>
 	): SpawnCommand

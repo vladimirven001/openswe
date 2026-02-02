@@ -42,19 +42,18 @@ export const openCodeProvider: Provider = {
 
 	buildSpawnCommand(
 		_session: Session,
-		prompt: string,
+		prompt?: string,
 		resumeSessionId?: string,
 		config?: Record<string, unknown>
 	): SpawnCommand {
 		const openCodeConfig = config as OpenCodeConfig | undefined
-		const model = openCodeConfig?.model ?? "big-pickle"
-		const provider = openCodeConfig?.provider ?? "opencode"
 
-		const args = [
-			"--model", `${provider}/${model}`,
-			"--agent", "plan",
-			"--prompt", prompt,
-		]
+		const args = []
+
+		// Without them, opencode launches in interactive TUI mode
+		if (prompt) {
+			args.push("--agent", "plan", "--prompt", prompt)
+		}
 
 		if (resumeSessionId) {
 			args.push("--session", resumeSessionId)

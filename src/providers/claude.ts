@@ -42,7 +42,7 @@ export const claudeProvider: Provider = {
 
 	buildSpawnCommand(
 		_session: Session,
-		prompt: string,
+		prompt?: string,
 		resumeSessionId?: string,
 		config?: Record<string, unknown>
 	): SpawnCommand {
@@ -59,8 +59,10 @@ export const claudeProvider: Provider = {
 			args.push("--resume", resumeSessionId)
 		}
 
-		// Add the prompt as the final argument
-		args.push(prompt)
+		// Add the prompt as the final argument (omit for interactive mode)
+		if (prompt) {
+			args.push(prompt)
+		}
 
 		return {
 			command: "claude",
