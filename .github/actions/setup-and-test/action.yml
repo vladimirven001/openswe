@@ -1,0 +1,27 @@
+name: Setup and Test
+description: Setup Bun, Zig, install dependencies, and run tests
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Setup Zig
+      uses: goto-bus-stop/setup-zig@v2
+      with:
+        version: 0.13.0
+
+    - name: Install dependencies
+      shell: bash
+      run: bun install
+
+    - name: Type check
+      shell: bash
+      run: bunx tsc --noEmit
+
+    - name: Run tests
+      shell: bash
+      run: bun test

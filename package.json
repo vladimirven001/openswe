@@ -1,7 +1,6 @@
 {
   "name": "@vladimirven/openswe",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
   "description": "AI coding agent (opencode, claude code) orchestration tool for tackling github issues",
   "homepage": "https://github.com/vladimirven001/openswe#readme",
   "bugs": {
@@ -14,13 +13,19 @@
   "license": "ISC",
   "author": "vladimirven",
   "type": "module",
-  "main": "src/index.js",
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "main": "src/index.ts",
   "bin": {
     "openswe": "src/index.ts"
   },
+  "files": [
+    "src"
+  ],
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
+    "build": "bunx tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {

@@ -2,7 +2,10 @@ node_modules/
 dist/
 .DS_Store
 
-**/.*/
 # OpenSWE
 .openswe/
 .worktrees/
+.claude/
+
+# bun
+**/bun.lock
