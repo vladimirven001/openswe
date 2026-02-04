@@ -1,6 +1,6 @@
 {
   "name": "@vladimirven/openswe",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI coding agent (opencode, claude code) orchestration tool for tackling github issues",
   "homepage": "https://github.com/vladimirven001/openswe#readme",
   "bugs": {
