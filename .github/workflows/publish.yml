@@ -152,17 +152,23 @@ jobs:
         with:
           version: 0.13.0
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
       - name: Install dependencies
         run: bun install
 
       - name: Type check
         run: bun run build
 
-      - name: Configure npm for publish
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+      - name: Run tests
+        run: bun test
 
       - name: Publish to npm
-        run: bunx npm publish --access public
+        run: npm publish --provenance --access public
 
   publish-homebrew:
     needs: [build-binaries, upload-binaries]
