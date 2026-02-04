@@ -1,10 +1,57 @@
 name: Publish
 
 on:
-  workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate tag format
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag must match format v#.#.# (e.g., v1.2.3). Got: $TAG"
+            exit 1
+          fi
+          echo "Valid tag: $TAG"
+
+  sync-version:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Update package.json version
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"  # Remove 'v' prefix
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          echo "Updated package.json to version $VERSION"
+
+      - name: Commit and push version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git diff --staged --quiet || git commit -m "chore: sync version to ${{ github.ref_name }}"
+          git push origin HEAD:main
+
   build-binaries:
+    needs: sync-version
     strategy:
       matrix:
         include:
@@ -26,6 +73,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Pull latest
+        run: git pull origin main
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -58,40 +110,27 @@ jobs:
             dist/${{ matrix.artifact }}.tar.gz
             dist/${{ matrix.artifact }}.sha256
 
-  publish-release:
+  upload-binaries:
     needs: build-binaries
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Get version
-        id: version
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Create GitHub Release
+      - name: Upload binaries to release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
           files: |
             artifacts/**/*.tar.gz
             artifacts/**/*.sha256
-          generate_release_notes: true
 
   publish-npm:
-    needs: build-binaries
+    needs: [sync-version, build-binaries]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -100,6 +139,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Pull latest
+        run: git pull origin main
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -124,7 +168,7 @@ jobs:
         run: bunx npm publish --access public
 
   publish-homebrew:
-    needs: [build-binaries, publish-release]
+    needs: [build-binaries, upload-binaries]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -138,9 +182,9 @@ jobs:
         with:
           path: artifacts
 
-      - name: Get version
+      - name: Get version from tag
         id: version
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
       - name: Calculate SHA256 values
         id: sha256
