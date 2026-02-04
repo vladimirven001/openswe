@@ -1,0 +1,208 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-binaries:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: bun-darwin-arm64
+            artifact: openswe-darwin-arm64
+          - os: macos-13
+            target: bun-darwin-x64
+            artifact: openswe-darwin-x64
+          - os: ubuntu-latest
+            target: bun-linux-x64
+            artifact: openswe-linux-x64
+          - os: ubuntu-24.04-arm
+            target: bun-linux-arm64
+            artifact: openswe-linux-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build binary
+        run: bun run scripts/build.ts ${{ matrix.target }}
+
+      - name: Create tarball
+        run: |
+          cd dist
+          mv ${{ matrix.artifact }} openswe
+          tar -czvf ${{ matrix.artifact }}.tar.gz openswe
+          shasum -a 256 ${{ matrix.artifact }}.tar.gz > ${{ matrix.artifact }}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist/${{ matrix.artifact }}.tar.gz
+            dist/${{ matrix.artifact }}.sha256
+
+  publish-release:
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.sha256
+          generate_release_notes: true
+
+  publish-npm:
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Type check
+        run: bun run build
+
+      - name: Configure npm for publish
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Publish to npm
+        run: bunx npm publish --access public
+
+  publish-homebrew:
+    needs: [build-binaries, publish-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Calculate SHA256 values
+        id: sha256
+        run: |
+          echo "darwin_arm64=$(cat artifacts/openswe-darwin-arm64/openswe-darwin-arm64.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "darwin_x64=$(cat artifacts/openswe-darwin-x64/openswe-darwin-x64.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "linux_x64=$(cat artifacts/openswe-linux-x64/openswe-linux-x64.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "linux_arm64=$(cat artifacts/openswe-linux-arm64/openswe-linux-arm64.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: vladimirven001/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula
+        run: |
+          cat > homebrew-tap/Formula/openswe.rb << 'EOF'
+          class Openswe < Formula
+            desc "AI coding agent orchestration tool for tackling GitHub issues"
+            homepage "https://github.com/vladimirven001/openswe"
+            version "${{ steps.version.outputs.version }}"
+            license "ISC"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/vladimirven001/openswe/releases/download/v${{ steps.version.outputs.version }}/openswe-darwin-arm64.tar.gz"
+                sha256 "${{ steps.sha256.outputs.darwin_arm64 }}"
+              end
+              on_intel do
+                url "https://github.com/vladimirven001/openswe/releases/download/v${{ steps.version.outputs.version }}/openswe-darwin-x64.tar.gz"
+                sha256 "${{ steps.sha256.outputs.darwin_x64 }}"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "https://github.com/vladimirven001/openswe/releases/download/v${{ steps.version.outputs.version }}/openswe-linux-arm64.tar.gz"
+                sha256 "${{ steps.sha256.outputs.linux_arm64 }}"
+              end
+              on_intel do
+                url "https://github.com/vladimirven001/openswe/releases/download/v${{ steps.version.outputs.version }}/openswe-linux-x64.tar.gz"
+                sha256 "${{ steps.sha256.outputs.linux_x64 }}"
+              end
+            end
+
+            def install
+              bin.install "openswe"
+            end
+
+            test do
+              assert_match "openswe", shell_output("#{bin}/openswe --version", 2)
+            end
+          end
+          EOF
+
+      - name: Commit and push formula
+        run: |
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/openswe.rb
+          git commit -m "Update openswe to v${{ steps.version.outputs.version }}"
+          git push

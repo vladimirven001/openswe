@@ -26,6 +26,7 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "bunx tsc --noEmit",
+    "build:binary": "bun run scripts/build.ts",
     "test": "bun test"
   },
   "dependencies": {
