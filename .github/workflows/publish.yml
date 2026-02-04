@@ -58,19 +58,12 @@ jobs:
           - os: macos-latest
             target: bun-darwin-arm64
             artifact: openswe-darwin-arm64
-            core-package: "@opentui/core-darwin-arm64"
-          - os: macos-latest
-            target: bun-darwin-x64
-            artifact: openswe-darwin-x64
-            core-package: "@opentui/core-darwin-x64"
           - os: ubuntu-latest
             target: bun-linux-x64
             artifact: openswe-linux-x64
-            core-package: "@opentui/core-linux-x64"
           - os: ubuntu-24.04-arm
             target: bun-linux-arm64
             artifact: openswe-linux-arm64
-            core-package: "@opentui/core-linux-arm64"
 
     runs-on: ${{ matrix.os }}
 
@@ -95,9 +88,6 @@ jobs:
 
       - name: Install dependencies
         run: bun install
-
-      - name: Install target platform bindings
-        run: bun add ${{ matrix.core-package }}
 
       - name: Build binary
         run: bun run scripts/build.ts ${{ matrix.target }}
@@ -197,7 +187,6 @@ jobs:
         id: sha256
         run: |
           echo "darwin_arm64=$(cat artifacts/openswe-darwin-arm64/openswe-darwin-arm64.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
-          echo "darwin_x64=$(cat artifacts/openswe-darwin-x64/openswe-darwin-x64.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
           echo "linux_x64=$(cat artifacts/openswe-linux-x64/openswe-linux-x64.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
           echo "linux_arm64=$(cat artifacts/openswe-linux-arm64/openswe-linux-arm64.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
 
@@ -221,10 +210,6 @@ jobs:
               on_arm do
                 url "https://github.com/vladimirven001/openswe/releases/download/v${{ steps.version.outputs.version }}/openswe-darwin-arm64.tar.gz"
                 sha256 "${{ steps.sha256.outputs.darwin_arm64 }}"
-              end
-              on_intel do
-                url "https://github.com/vladimirven001/openswe/releases/download/v${{ steps.version.outputs.version }}/openswe-darwin-x64.tar.gz"
-                sha256 "${{ steps.sha256.outputs.darwin_x64 }}"
               end
             end
 

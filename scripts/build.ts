@@ -5,12 +5,9 @@
 import { rename, mkdir } from "fs/promises"
 import solidTransformPlugin from "@opentui/solid/bun-plugin"
 
-const target = process.argv[2] as
-	| "bun-darwin-arm64"
-	| "bun-darwin-x64"
-	| "bun-linux-x64"
-	| "bun-linux-arm64"
-	| undefined
+type BuildTarget = "bun-darwin-arm64" | "bun-linux-x64" | "bun-linux-arm64"
+
+const target = process.argv[2] as BuildTarget | undefined
 
 const targetSuffix = target?.replace("bun-", "") ?? "native"
 const outputName = `openswe-${targetSuffix}`
@@ -22,7 +19,7 @@ await mkdir("./dist", { recursive: true })
 const result = await Bun.build({
 	entrypoints: ["./src/index.ts"],
 	outdir: "./dist",
-	target: target ?? "bun",
+	target: (target ?? "bun") as Bun.BuildConfig["target"],
 	compile: true,
 	plugins: [solidTransformPlugin],
 	minify: true,
