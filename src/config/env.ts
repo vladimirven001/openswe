@@ -45,7 +45,7 @@ export function loadEnvConfig(): PartialConfig {
     if (isValidBackend(backend)) {
       config.ai = { backend }
     } else {
-      warnInvalidEnv("OPENSWE_BACKEND", backend, '"opencode" or "claude"')
+      warnInvalidEnv("OPENSWE_BACKEND", backend, '"opencode", "claude", or "codex"')
     }
   }
 
