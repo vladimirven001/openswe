@@ -7,6 +7,7 @@
  * - Visual state is retrieved via capture-pane
  */
 
+import { existsSync } from "fs"
 import type { ProcessManager, ProcessSnapshot } from "./process-manager"
 import { logger } from "../utils/logger"
 import { shellQuote } from "../utils/shell"
@@ -63,6 +64,12 @@ export class TmuxManager implements ProcessManager {
     // Better approach: Let tmux handle the TUI.
     // For parsing markers: We can use `tmux pipe-pane` to stream output to a file!
     
+    // Validate that cwd exists on disk -- tmux silently falls back to $HOME
+    // when given a non-existent -c path, which causes sessions to spawn from ~
+    if (!existsSync(cwd)) {
+      throw new Error(`Working directory does not exist: ${cwd}. The worktree may have been deleted.`)
+    }
+
     const fullCommand = `${shellQuote(command)} ${args.map(shellQuote).join(" ")}`
     
     // 1. Create detached session

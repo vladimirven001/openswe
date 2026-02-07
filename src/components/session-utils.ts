@@ -11,6 +11,7 @@ import { getWorktreePath, generateBranchName, sanitizeWorktreeName } from "../wo
 import type { GitHubIssue } from "../github"
 import type { Session, AISessionData } from "../store"
 import { logger } from "../utils/logger"
+import { existsSync } from "fs"
 
 // ============================================================================
 // Types
@@ -126,9 +127,18 @@ export async function createSessionFromIssue(
 	let branchName: string
 
 	if (options.overwriteWorktreeChoice === OverwriteWorktreeChoice.use_existing) {
-		// Continue with existing worktree
+		// Continue with existing worktree -- but verify it actually exists on disk
 		worktreePath = getWorktreePath(projectRoot, worktreeName)
 		branchName = generateBranchName(worktreeName)
+
+		if (!existsSync(worktreePath)) {
+			logger.warn("use_existing selected but worktree directory missing on disk", { worktreePath })
+			return {
+				success: false,
+				session: null,
+				error: `Worktree directory does not exist: ${worktreePath}. It may have been deleted. Try creating a new worktree instead.`,
+			}
+		}
 	} else {
 		// Handle overwrite if requested
 		if (options.overwriteWorktreeChoice === OverwriteWorktreeChoice.overwrite) {
@@ -282,15 +292,12 @@ export async function deleteSessionWithWorktree(
 		}
 	}
 
-	// Determine worktree name from session
-	let worktreeName: string | number
-	if (session.issueNumber !== null) {
-		worktreeName = session.issueNumber
-	} else {
-		// Extract from worktree path or branch name
-		const pathParts = session.worktreePath.split("/")
-		worktreeName = pathParts[pathParts.length - 1] ?? session.branchName.replace("openswe/", "")
-	}
+	// Derive the worktree name from the stored worktree path (last segment).
+	// This is more reliable than re-deriving from issueNumber, because the
+	// actual worktree may have a suffix (e.g. "issue-123-1") from conflict
+	// resolution that would be lost if we computed from the issue number alone.
+	const pathParts = session.worktreePath.split("/")
+	const worktreeName = pathParts[pathParts.length - 1] ?? session.branchName.replace("openswe/", "")
 
 	// Remove the worktree (force to handle uncommitted changes)
 	const worktreeResult = await removeWorktree(projectRoot, worktreeName, {
@@ -326,12 +333,10 @@ export async function deleteSessionWithWorktree(
  * @param session - Session to extract name from
  * @returns Worktree name (issue number or sanitized name)
  */
-export function getWorktreeNameFromSession(session: Session): string | number {
-	if (session.issueNumber !== null) {
-		return session.issueNumber
-	}
-
-	// Extract from worktree path
+export function getWorktreeNameFromSession(session: Session): string {
+	// Always derive from the stored worktree path (last segment) rather than
+	// re-computing from issueNumber, to correctly handle suffixed names like
+	// "issue-123-1" from conflict resolution.
 	const pathParts = session.worktreePath.split("/")
 	return pathParts[pathParts.length - 1] ?? session.branchName.replace("openswe/", "")
 }

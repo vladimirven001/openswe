@@ -25,9 +25,11 @@ import { TmuxManager } from "./tmux"
 import { logger } from "../utils/logger"
 import { getSessionLogPath } from "../workspace/paths"
 import { dirname } from "path"
+import { existsSync } from "fs"
 import { mkdir, open } from "fs/promises"
 import { getProvider } from "../providers"
 import type { Provider } from "../providers"
+import { createWorktree } from "../git"
 
 export interface StartSessionOptions {
   sessionId: string
@@ -192,6 +194,29 @@ export class SessionManager {
 
       // Merge provider-specific env vars
       const env = { ...baseEnv, ...spawnCmd.env }
+
+      // Validate that the worktree directory exists before spawning.
+      // If it's missing (e.g., deleted externally, git worktree prune), attempt
+      // to recreate it so tmux doesn't silently fall back to $HOME.
+      if (!existsSync(session.worktreePath)) {
+        logger.warn(`Worktree missing for session "${session.name}": ${session.worktreePath}. Attempting to recreate.`)
+
+        // Derive the worktree name from the stored path (last segment)
+        const pathParts = session.worktreePath.split("/")
+        const worktreeName = pathParts[pathParts.length - 1]
+
+        if (!worktreeName) {
+          throw new Error(`Cannot recreate worktree: invalid worktree path "${session.worktreePath}"`)
+        }
+
+        const worktreeResult = await createWorktree(this.projectRoot, worktreeName)
+        if (!worktreeResult.success) {
+          updateSessionStatus(session.id, "needs_attention")
+          throw new Error(`Worktree directory missing and recreation failed: ${worktreeResult.error}`)
+        }
+
+        logger.info(`Worktree recreated for session "${session.name}" at ${session.worktreePath}`)
+      }
 
       // Spawn tmux session
       const pid = await this.processManager.spawn(
