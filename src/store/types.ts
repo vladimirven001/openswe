@@ -28,7 +28,7 @@ export type Status =
 
 /** Backend session reference for AI integrations */
 export interface AISessionData {
-  backend: "opencode" | "claude"
+  backend: "opencode" | "claude" | "codex"
   sessionId?: string
   [key: string]: unknown
 }
@@ -168,7 +168,7 @@ const VALID_STATUSES: readonly Status[] = [
   "failed",
 ]
 
-const VALID_AI_BACKENDS = ["opencode", "claude"] as const
+const VALID_AI_BACKENDS = ["opencode", "claude", "codex"] as const
 
 /** Check if a value is a valid Phase */
 export function isValidPhase(val: unknown): val is Phase {
@@ -185,7 +185,7 @@ export function isValidAISessionData(val: unknown): val is AISessionData {
   if (typeof val !== "object" || val === null) return false
 
   const backend = (val as { backend?: unknown }).backend
-  if (backend !== "opencode" && backend !== "claude") return false
+  if (typeof backend !== "string" || !VALID_AI_BACKENDS.includes(backend as typeof VALID_AI_BACKENDS[number])) return false
 
   const sessionId = (val as { sessionId?: unknown }).sessionId
   if (sessionId !== undefined && typeof sessionId !== "string") return false

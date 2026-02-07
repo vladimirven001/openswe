@@ -6,6 +6,7 @@
 
 import { checkGitInstalled } from "../git"
 import { checkGhCli } from "../github"
+import type { AIBackend } from "../config/types"
 
 // ============================================================================
 // Types
@@ -31,10 +32,12 @@ export interface PrerequisiteResult {
  * Verifies:
  * - Git is installed
  * - GitHub CLI (gh) is installed and authenticated
+ * - The configured AI backend CLI is available
  *
+ * @param backend - The configured AI backend to check (defaults to "opencode")
  * @returns Result indicating whether prerequisites are met
  */
-export async function checkPrerequisites(): Promise<PrerequisiteResult> {
+export async function checkPrerequisites(backend: AIBackend = "opencode"): Promise<PrerequisiteResult> {
   const errors: string[] = []
   const warnings: string[] = []
 
@@ -56,11 +59,12 @@ export async function checkPrerequisites(): Promise<PrerequisiteResult> {
     )
   }
 
-  // Check if opencode is available (warning only, not required for all operations)
-  const opencodeAvailable = await isCommandAvailable("opencode")
-  if (!opencodeAvailable) {
+  // Check if the configured backend CLI is available (warning only)
+  const backendCommand = backend === "opencode" ? "opencode" : backend === "claude" ? "claude" : "codex"
+  const backendAvailable = await isCommandAvailable(backendCommand)
+  if (!backendAvailable) {
     warnings.push(
-      "opencode command not found in PATH. Sessions won't be able to start until it's installed."
+      `${backendCommand} command not found in PATH. Sessions won't be able to start until it's installed.`
     )
   }
 

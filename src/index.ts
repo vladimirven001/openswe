@@ -41,7 +41,7 @@ interface CLIArgs {
   repo?: string
   setup?: boolean
   status?: boolean
-  backend?: "opencode" | "claude"
+  backend?: "opencode" | "claude" | "codex"
   model?: string
   debug?: boolean
 }
@@ -69,7 +69,7 @@ const argv = await yargs(hideBin(process.argv))
   })
   .option("backend", {
     type: "string",
-    choices: ["opencode", "claude"] as const,
+    choices: ["opencode", "claude", "codex"] as const,
     description: "AI backend to use",
   })
   .option("model", {
@@ -195,7 +195,7 @@ async function handleExistingProject(
   initFileLogging(join(logsDir, "openswe.log"))
 
   // Check prerequisites before launching TUI
-  const prereqResult = await checkPrerequisites()
+  const prereqResult = await checkPrerequisites(config.ai.backend)
   if (!prereqResult.success) {
     logger.error(formatPrerequisiteErrors(prereqResult))
     exitApp(1)

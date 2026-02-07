@@ -33,7 +33,7 @@ function warnInvalidEnv(varName: string, value: string, expected: string): void 
  * Load configuration from environment variables
  *
  * Supported variables:
- * - OPENSWE_BACKEND: "opencode" | "claude"
+ * - OPENSWE_BACKEND: "opencode" | "claude" | "codex"
  * - OPENSWE_LOG_LEVEL: "debug" | "info" | "warn" | "error"
  */
 export function loadEnvConfig(): PartialConfig {
@@ -45,7 +45,7 @@ export function loadEnvConfig(): PartialConfig {
     if (isValidBackend(backend)) {
       config.ai = { backend }
     } else {
-      warnInvalidEnv("OPENSWE_BACKEND", backend, '"opencode" or "claude"')
+      warnInvalidEnv("OPENSWE_BACKEND", backend, '"opencode", "claude", or "codex"')
     }
   }
 

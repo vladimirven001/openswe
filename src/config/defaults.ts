@@ -18,6 +18,9 @@ export const DEFAULT_CONFIG: GlobalConfig = {
     claude: {
       model: "claude-sonnet-4-20250514",
     },
+    codex: {
+      model: "o3",
+    },
   },
 
   keybindings: {

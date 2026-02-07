@@ -99,6 +99,8 @@ function applyCLIOverrides(config: GlobalConfig, cli: CLIOverrides): GlobalConfi
       result.ai.opencode.model = cli.model
     } else if (activeBackend === "claude") {
       result.ai.claude.model = cli.model
+    } else if (activeBackend === "codex") {
+      result.ai.codex.model = cli.model
     }
   }
 
