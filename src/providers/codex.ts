@@ -15,8 +15,8 @@ import type { CodexConfig } from "../config/types"
 const branding: ProviderBranding = {
 	displayName: "Codex",
 	shortName: "codex",
-	accentColor: "#00FFFF",
-	secondaryColor: "#00d4d4",
+	accentColor: "#8BE9FD",
+	secondaryColor: "#59DFFC",
 	logoText: "CX",
 }
 
