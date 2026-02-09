@@ -46,7 +46,7 @@ describe("codexProvider", () => {
 
 	describe("branding", () => {
 		test("has OpenAI green accent color", () => {
-			expect(codexProvider.branding.accentColor).toBe("#00FFFF")
+			expect(codexProvider.branding.accentColor).toBe("#8BE9FD")
 		})
 
 		test("has all required branding fields", () => {
