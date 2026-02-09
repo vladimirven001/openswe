@@ -15,8 +15,8 @@ import type { OpenCodeConfig } from "../config/types"
 const branding: ProviderBranding = {
 	displayName: "OpenCode",
 	shortName: "opencode",
-	accentColor: "#fab283",
-	secondaryColor: "#d4956b",
+	accentColor: "#cfcecd",
+	secondaryColor: "#f1ecec",
 	logoText: "OC",
 	terminalBackground: "#000000",
 }
