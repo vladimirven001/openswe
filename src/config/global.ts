@@ -132,7 +132,7 @@ function validateParsedConfig(parsed: unknown): PartialConfig {
     if (isValidBackend(ai.backend)) {
       config.ai.backend = ai.backend
     } else if (ai.backend !== undefined) {
-      warnInvalidConfig("ai.backend", ai.backend, '"opencode" or "claude"')
+      warnInvalidConfig("ai.backend", ai.backend, '"opencode", "claude", or "codex"')
     }
 
     if (ai.opencode && typeof ai.opencode === "object") {
@@ -146,6 +146,12 @@ function validateParsedConfig(parsed: unknown): PartialConfig {
       const cl = ai.claude as Record<string, unknown>
       config.ai.claude = {}
       if (isNonEmptyString(cl.model)) config.ai.claude.model = cl.model
+    }
+
+    if (ai.codex && typeof ai.codex === "object") {
+      const cx = ai.codex as Record<string, unknown>
+      config.ai.codex = {}
+      if (isNonEmptyString(cx.model)) config.ai.codex.model = cx.model
     }
   }
 

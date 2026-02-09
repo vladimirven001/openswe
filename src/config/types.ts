@@ -7,7 +7,7 @@
 // ============================================================================
 
 /** Supported AI backends */
-export type AIBackend = "opencode" | "claude"
+export type AIBackend = "opencode" | "claude" | "codex"
 
 /** Log levels in order of verbosity */
 export type LogLevel = "debug" | "info" | "warn" | "error"
@@ -27,11 +27,17 @@ export interface ClaudeConfig {
   model: string
 }
 
+/** OpenAI Codex-specific AI configuration */
+export interface CodexConfig {
+  model: string
+}
+
 /** AI backend configuration */
 export interface AIConfig {
   backend: AIBackend
   opencode: OpenCodeConfig
   claude: ClaudeConfig
+  codex: CodexConfig
 }
 
 /** Keyboard shortcut configuration */
@@ -97,7 +103,7 @@ export interface CLIOverrides {
 // ============================================================================
 
 /** Valid AI backend values */
-const VALID_BACKENDS: readonly AIBackend[] = ["opencode", "claude"]
+const VALID_BACKENDS: readonly AIBackend[] = ["opencode", "claude", "codex"]
 
 /** Valid log level values */
 const VALID_LOG_LEVELS: readonly LogLevel[] = ["debug", "info", "warn", "error"]

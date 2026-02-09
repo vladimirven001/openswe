@@ -69,7 +69,7 @@ const argv = await yargs(hideBin(process.argv))
   })
   .option("backend", {
     type: "string",
-    choices: ["opencode", "claude"] as const,
+    choices: ["opencode", "claude", "codex"] as const,
     description: "AI backend to use",
   })
   .option("model", {

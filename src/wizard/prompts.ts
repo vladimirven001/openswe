@@ -12,7 +12,7 @@ import { isValidOwnerRepo } from "../git/repo"
 // ============================================================================
 
 /** AI backend options */
-export type AIBackendChoice = "opencode" | "claude"
+export type AIBackendChoice = "opencode" | "claude" | "codex"
 
 // ============================================================================
 // Repository Input
@@ -65,6 +65,11 @@ export async function promptAiBackend(): Promise<AIBackendChoice | symbol> {
         value: "claude" as const,
         label: "Claude",
         hint: "Anthropic's Claude via API",
+      },
+      {
+        value: "codex" as const,
+        label: "Codex",
+        hint: "OpenAI's coding agent CLI",
       },
     ],
   })
