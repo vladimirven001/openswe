@@ -13,10 +13,10 @@ import type { CodexConfig } from "../config/types"
 // ============================================================================
 
 const branding: ProviderBranding = {
-	displayName: "OpenAI Codex",
+	displayName: "Codex",
 	shortName: "codex",
-	accentColor: "#10a37f",
-	secondaryColor: "#0d8c6d",
+	accentColor: "#00FFFF",
+	secondaryColor: "#00d4d4",
 	logoText: "CX",
 }
 
@@ -36,7 +36,7 @@ const parserPatterns: ParserPatterns = {
 
 export const codexProvider: Provider = {
 	id: "codex",
-	name: "OpenAI Codex",
+	name: "Codex",
 	branding,
 	parserPatterns,
 

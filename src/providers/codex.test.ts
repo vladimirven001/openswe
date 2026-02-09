@@ -37,7 +37,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
 describe("codexProvider", () => {
 	test("has correct id and name", () => {
 		expect(codexProvider.id).toBe("codex")
-		expect(codexProvider.name).toBe("OpenAI Codex")
+		expect(codexProvider.name).toBe("Codex")
 	})
 
 	// ============================================================================
@@ -46,11 +46,11 @@ describe("codexProvider", () => {
 
 	describe("branding", () => {
 		test("has OpenAI green accent color", () => {
-			expect(codexProvider.branding.accentColor).toBe("#10a37f")
+			expect(codexProvider.branding.accentColor).toBe("#00FFFF")
 		})
 
 		test("has all required branding fields", () => {
-			expect(codexProvider.branding.displayName).toBe("OpenAI Codex")
+			expect(codexProvider.branding.displayName).toBe("Codex")
 			expect(codexProvider.branding.shortName).toBe("codex")
 			expect(codexProvider.branding.secondaryColor).toBeTruthy()
 			expect(codexProvider.branding.logoText).toBe("CX")

@@ -68,7 +68,7 @@ export async function promptAiBackend(): Promise<AIBackendChoice | symbol> {
       },
       {
         value: "codex" as const,
-        label: "OpenAI Codex",
+        label: "Codex",
         hint: "OpenAI's coding agent CLI",
       },
     ],
