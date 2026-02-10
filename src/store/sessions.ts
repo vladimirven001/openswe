@@ -16,6 +16,7 @@ import type {
 } from "./types"
 import { isValidAISessionData } from "./types"
 import { logger } from "../utils/logger"
+import { clearBuffer } from "./buffers"
 
 // ============================================================================
 // Database Row Type
@@ -425,6 +426,36 @@ export function setAISessionData(id: string, data: AISessionData | null): void {
 export function getAISessionData(id: string): AISessionData | null {
   const session = getSession(id)
   return session?.aiSessionData ?? null
+}
+
+/**
+ * Reset a session for reload
+ *
+ * Clears output buffer, resets phase/status to pending/queued,
+ * clears PID and retry count, and clears attention reason.
+ * Preserves aiSessionData for session continuity.
+ *
+ * @param id - Session ID
+ */
+export function resetSessionForReload(id: string): void {
+  const db = getDatabase()
+  const now = nowISO()
+
+  db.query(
+    `UPDATE sessions 
+     SET phase = 'pending', 
+         status = 'queued', 
+         pid = NULL,
+         retry_count = 0,
+         attention_reason = NULL,
+         updated_at = ?
+     WHERE id = ?`
+  ).run(now, id)
+
+  // Clear output buffer for clean slate
+  clearBuffer(id)
+
+  logger.debug("Session reset for reload", { sessionId: id })
 }
 
 // ============================================================================

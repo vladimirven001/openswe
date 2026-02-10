@@ -210,4 +210,18 @@ export class TmuxManager implements ProcessManager {
     // resize-window sets the size of the window (and thus the detached session)
     await Bun.spawn(["tmux", "resize-window", "-t", sessionName, "-x", cols.toString(), "-y", rows.toString()], { stderr: "ignore" }).exited
   }
+
+  async setWindowTitle(id: string, title: string): Promise<void> {
+    const sessionName = this.getSessionName(id)
+    // Disable automatic window renaming
+    await Bun.spawn([
+      "tmux", "set-option", "-t", sessionName,
+      "automatic-rename", "off"
+    ], { stderr: "ignore" }).exited
+
+    // Set the window title
+    await Bun.spawn([
+      "tmux", "rename-window", "-t", sessionName, title
+    ], { stderr: "ignore" }).exited
+  }
 }

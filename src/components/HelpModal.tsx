@@ -33,8 +33,8 @@ const KEY_SECTIONS: KeySection[] = [
     bindings: [
       { key: "n", description: "New session" },
       { key: "d", description: "Delete session" },
-      { key: "p", description: "Pause active session (kills AI, keeps preview)" },
-      { key: "r", description: "Refresh data" },
+      { key: "p", description: "Pause/resume session" },
+      { key: "r", description: "Reload session" },
     ],
   },
   {
@@ -60,10 +60,10 @@ export function HelpModal(props: HelpModalProps) {
 
   useKeyboard((event) => {
     switch (event.name) {
-        case "escape":
+      case "escape":
         props.onClose()
         break
-	}
+    }
   })
 
   return (

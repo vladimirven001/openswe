@@ -8,6 +8,7 @@ import type { AIBackend } from "../config/types"
 import type { Provider } from "./types"
 import { openCodeProvider } from "./opencode"
 import { claudeProvider } from "./claude"
+import { codexProvider } from "./codex"
 
 // ============================================================================
 // Registry
@@ -16,6 +17,7 @@ import { claudeProvider } from "./claude"
 const providers: Map<AIBackend, Provider> = new Map([
 	["opencode", openCodeProvider],
 	["claude", claudeProvider],
+	["codex", codexProvider],
 ])
 
 // ============================================================================

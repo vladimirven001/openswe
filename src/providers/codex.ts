@@ -1,7 +1,7 @@
 /**
- * OpenCode provider implementation
+ * OpenAI Codex provider implementation
  *
- * Supports the OpenCode CLI (https://github.com/opencode-ai/opencode)
+ * Supports the Codex CLI (https://github.com/openai/codex)
  */
 
 import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand } from "./types"
@@ -12,12 +12,11 @@ import type { Session } from "../store"
 // ============================================================================
 
 const branding: ProviderBranding = {
-	displayName: "OpenCode",
-	shortName: "opencode",
-	accentColor: "#cfcecd",
-	secondaryColor: "#f1ecec",
-	logoText: "OC",
-	terminalBackground: "#000000",
+	displayName: "Codex",
+	shortName: "codex",
+	accentColor: "#8BE9FD",
+	secondaryColor: "#59DFFC",
+	logoText: "CX",
 }
 
 // ============================================================================
@@ -25,18 +24,18 @@ const branding: ProviderBranding = {
 // ============================================================================
 
 const parserPatterns: ParserPatterns = {
-	workingRegex: /(?:starting|begin|entering).+(?:implementation|coding|execution)|(?:mode|status):\s*(?:implement|coding)/i,
-	doneRegex: /\[?OPENSWE:DONE\]?/i,
-	sessionIdRegex: /(?:Session ID|session id):\s*([a-zA-Z0-9-]+)/i,
+	// Codex outputs status messages similarly to Claude Code
+	workingRegex: /(?:starting|begin|entering).+(?:implementation|coding|execution)|(?:mode|status):\s*(?:implement|coding)|editing|writing.*file/i,
+	doneRegex: /\[?OPENSWE:DONE\]?|completed successfully|task completed/i,
 }
 
 // ============================================================================
 // Provider Implementation
 // ============================================================================
 
-export const openCodeProvider: Provider = {
-	id: "opencode",
-	name: "OpenCode",
+export const codexProvider: Provider = {
+	id: "codex",
+	name: "Codex",
 	branding,
 	parserPatterns,
 
@@ -46,26 +45,42 @@ export const openCodeProvider: Provider = {
 		resumeSessionId?: string,
 		_config?: Record<string, unknown>
 	): SpawnCommand {
-		const args = []
+		// Resume a previous session
+		if (resumeSessionId) {
+			const args = [
+				"resume", resumeSessionId,
+				"--full-auto",
+			]
 
-		// Without them, opencode launches in interactive TUI mode
-		if (prompt) {
-			args.push("--agent", "plan", "--prompt", prompt)
+			if (prompt) {
+				args.push(prompt)
+			}
+
+			return {
+				command: "codex",
+				args,
+			}
 		}
 
-		if (resumeSessionId) {
-			args.push("--session", resumeSessionId)
+		// Start a new session with --full-auto for non-interactive use
+		const args = [
+			"--full-auto",
+		]
+
+		// Add the prompt as the final positional argument
+		if (prompt) {
+			args.push(prompt)
 		}
 
 		return {
-			command: "opencode",
+			command: "codex",
 			args,
 		}
 	},
 
 	async validateInstallation(): Promise<boolean> {
 		try {
-			const proc = Bun.spawn(["which", "opencode"], {
+			const proc = Bun.spawn(["which", "codex"], {
 				stdout: "pipe",
 				stderr: "pipe",
 			})
@@ -78,7 +93,7 @@ export const openCodeProvider: Provider = {
 
 	async getVersion(): Promise<string | null> {
 		try {
-			const proc = Bun.spawn(["opencode", "--version"], {
+			const proc = Bun.spawn(["codex", "--version"], {
 				stdout: "pipe",
 				stderr: "pipe",
 			})
@@ -86,7 +101,7 @@ export const openCodeProvider: Provider = {
 			if (exitCode !== 0) return null
 
 			const output = await new Response(proc.stdout).text()
-			// Extract version from output (e.g., "opencode v1.2.3" or just "1.2.3")
+			// Extract version from output (e.g., "codex v1.2.3" or "1.2.3")
 			const match = output.match(/v?(\d+\.\d+\.\d+(?:-[\w.]+)?)/)
 			return match ? match[1] ?? null : output.trim() || null
 		} catch {

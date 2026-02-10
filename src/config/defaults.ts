@@ -12,11 +12,13 @@ export const DEFAULT_CONFIG: GlobalConfig = {
   ai: {
     backend: "opencode",
     opencode: {
-      model: "claude-sonnet",
       provider: "anthropic",
     },
     claude: {
-      model: "claude-sonnet-4-20250514",
+      // Provider uses its own default model
+    },
+    codex: {
+      // Provider uses its own default model
     },
   },
 

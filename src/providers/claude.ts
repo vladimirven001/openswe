@@ -6,7 +6,6 @@
 
 import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand } from "./types"
 import type { Session } from "../store"
-import type { ClaudeConfig } from "../config/types"
 
 // ============================================================================
 // Branding
@@ -45,16 +44,11 @@ export const claudeProvider: Provider = {
 		session: Session,
 		prompt?: string,
 		resumeSessionId?: string,
-		config?: Record<string, unknown>
+		_config?: Record<string, unknown>
 	): SpawnCommand {
-		const claudeConfig = config as ClaudeConfig | undefined
-		const model = claudeConfig?.model ?? "claude-sonnet-4-20250514"
-
 		// Run Claude Code interactively (no --print flag)
 		// User can attach to the tmux session to review and approve changes
-		const args = [
-			"--model", model,
-		]
+		const args: string[] = []
 
 		if (resumeSessionId) {
 			args.push("--resume", resumeSessionId)

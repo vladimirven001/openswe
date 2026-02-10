@@ -17,6 +17,7 @@ import {
   getAllLines,
   isValidPhase,
   getProject,
+  resetSessionForReload,
 } from "../store"
 import type { AISessionData } from "../store"
 import type { GlobalConfig, AIBackend } from "../config"
@@ -31,6 +32,7 @@ import { mkdir, open } from "fs/promises"
 import { getProvider } from "../providers"
 import type { Provider } from "../providers"
 import { createWorktree } from "../git"
+import { generateSWEPrompt } from "../prompts"
 
 export interface StartSessionOptions {
   sessionId: string
@@ -178,7 +180,6 @@ export class SessionManager {
       // Use session's backend if available, otherwise fall back to global config
       const backend = options.aiSessionData?.backend ?? session.aiSessionData?.backend ?? this.config.ai.backend
       const provider = getProvider(backend)
-      const providerConfig = this.config.ai[backend] as unknown as Record<string, unknown>
 
       // Ensure Claude can use a deterministic session ID when starting new sessions
       let effectiveSession = session
@@ -203,11 +204,11 @@ export class SessionManager {
       }
 
       // Build spawn command using the session's provider
+      // Provider uses its own default model - no model configuration needed
       const spawnCmd = provider.buildSpawnCommand(
         effectiveSession,
         options.prompt,
-        options.resumeSessionId,
-        providerConfig
+        options.resumeSessionId
       )
 
       // Filter env to remove undefined values
@@ -349,6 +350,41 @@ export class SessionManager {
   }
 
   /**
+   * Reload a session - stop it and restart with preserved AI session data
+   *
+   * This closes the current session and restarts it using the same AI provider
+   * and session ID, allowing the conversation to continue from where it left off.
+   *
+   * @param sessionId - The session to reload
+   */
+  async reloadSession(sessionId: string): Promise<void> {
+    const session = getSession(sessionId)
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    logger.info(`Reloading session "${session.name}" (${sessionId})`)
+
+    // 1. Stop existing session if running
+    if (this.activeSessions.has(sessionId)) {
+      await this.stopSession(sessionId)
+    }
+
+    // 2. Reset session state in DB (clear output buffer, reset phase/status)
+    resetSessionForReload(sessionId)
+
+    // 3. Restart with preserved aiSessionData
+    await this.startSession({
+      sessionId: session.id,
+      prompt: session.issueNumber ? generateSWEPrompt(session) : undefined,
+      resumeSessionId: session.aiSessionData?.sessionId,
+      aiSessionData: session.aiSessionData,
+    })
+
+    logger.info(`Session "${session.name}" reloaded successfully`)
+  }
+
+  /**
    * Get the current visual state of the session for preview
    */
   async getSnapshot(sessionId: string): Promise<string[]> {
@@ -377,6 +413,13 @@ export class SessionManager {
    */
   async resizeSession(sessionId: string, cols: number, rows: number): Promise<void> {
     await this.processManager.resize(sessionId, cols, rows)
+  }
+
+  /**
+   * Set the window title for the session
+   */
+  async setWindowTitle(sessionId: string, title: string): Promise<void> {
+    await this.processManager.setWindowTitle(sessionId, title)
   }
 
   private cleanupSession(sessionId: string) {

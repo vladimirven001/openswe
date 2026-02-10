@@ -99,7 +99,7 @@ export function App(props: AppProps) {
   // Generate worktree command for selected session
   const worktreeCommand = (): string | undefined => {
     const session = selectedSession()
-    return session?.worktreePath ? `cd ${session.worktreePath}` : undefined
+    return session?.worktreePath ? `cd '${session.worktreePath.replace(/'/g, "'\\''")}'` : undefined
   }
 
   // ============================================================================
@@ -321,9 +321,17 @@ export function App(props: AppProps) {
         break
       }
 
-      case "r":
-        loadSessions()
+      case "r": {
+        const session = selectedSession()
+        if (session) {
+          sessionManager.reloadSession(session.id).then(() => {
+            loadSessions()
+          }).catch((error) => {
+            logger.error("Failed to reload session:", error)
+          })
+        }
         break
+      }
 
       case "return":
         // Full takeover mode - start session if needed, then attach
@@ -349,7 +357,11 @@ export function App(props: AppProps) {
             if (updatedSession?.status === "active") {
               // Resize to full terminal size for interactive use
               await sessionManager.resizeSession(session.id, termSize().cols, termSize().rows)
-              
+
+              // Set terminal and window title to "openswe"
+              process.stdout.write("\x1b]0;openswe\x07")
+              await sessionManager.setWindowTitle(session.id, "openswe")
+
               const cmd = sessionManager.getAttachCommand(session.id)
 
               // Suspend OpenTUI before yielding terminal to tmux
