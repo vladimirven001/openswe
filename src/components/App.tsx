@@ -98,7 +98,7 @@ export function App(props: AppProps) {
   // Generate worktree command for selected session
   const worktreeCommand = (): string | undefined => {
     const session = selectedSession()
-    return session?.worktreePath ? `cd ${session.worktreePath}` : undefined
+	return session?.worktreePath ? `cd '${session.worktreePath.replace(/'/g, "'\\''")}'` : undefined
   }
 
   // ============================================================================
