@@ -22,6 +22,7 @@ export function StatusBar(props: StatusBarProps) {
         repoName={props.repoName}
         backend={props.backend}
         sessionId={props.sessionId}
+        worktreeCommand={props.worktreeCommand}
         providerBranding={props.providerBranding}
       />
     </Show>
@@ -32,6 +33,7 @@ function HeaderBar(props: {
   repoName?: string
   backend?: string
   sessionId?: string
+  worktreeCommand?: string
   providerBranding?: ProviderBranding
 }) {
   const colors = useColors()
@@ -57,6 +59,14 @@ function HeaderBar(props: {
           <text fg={colors().text.inverse}>{props.repoName}</text>
         </Show>
       </box>
+
+      {/* Center: Worktree command */}
+      <box flexDirection="row" gap={1}>
+        <Show when={props.worktreeCommand}>
+          <text fg={colors().text.inverse} opacity={0.8}>📁 {props.worktreeCommand}</text>
+        </Show>
+      </box>
+
       <box flexDirection="row" gap={1}>
         <Show when={props.sessionId}>
           <text fg={colors().text.inverse}>ID: {props.sessionId}</text>

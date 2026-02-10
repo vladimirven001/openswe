@@ -95,6 +95,12 @@ export function App(props: AppProps) {
     }
   }
 
+  // Generate worktree command for selected session
+  const worktreeCommand = (): string | undefined => {
+    const session = selectedSession()
+    return session?.worktreePath ? `cd ${session.worktreePath}` : undefined
+  }
+
   // ============================================================================
   // Data Loading
   // ============================================================================
@@ -426,6 +432,7 @@ export function App(props: AppProps) {
         repoName={projectInfo()?.repoFullName}
         backend={props.config.ai.backend}
         sessionId={selectedSession()?.id}
+        worktreeCommand={worktreeCommand()}
         providerBranding={providerBranding()}
       />
 
