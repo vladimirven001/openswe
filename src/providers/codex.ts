@@ -6,7 +6,6 @@
 
 import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand } from "./types"
 import type { Session } from "../store"
-import type { CodexConfig } from "../config/types"
 
 // ============================================================================
 // Branding
@@ -44,17 +43,13 @@ export const codexProvider: Provider = {
 		_session: Session,
 		prompt?: string,
 		resumeSessionId?: string,
-		config?: Record<string, unknown>
+		_config?: Record<string, unknown>
 	): SpawnCommand {
-		const codexConfig = config as CodexConfig | undefined
-		const model = codexConfig?.model ?? "gpt-5-codex"
-
 		// Resume a previous session
 		if (resumeSessionId) {
 			const args = [
 				"resume", resumeSessionId,
 				"--full-auto",
-				"--model", model,
 			]
 
 			if (prompt) {
@@ -70,7 +65,6 @@ export const codexProvider: Provider = {
 		// Start a new session with --full-auto for non-interactive use
 		const args = [
 			"--full-auto",
-			"--model", model,
 		]
 
 		// Add the prompt as the final positional argument

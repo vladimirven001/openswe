@@ -18,18 +18,17 @@ export type LogLevel = "debug" | "info" | "warn" | "error"
 
 /** OpenCode-specific AI configuration */
 export interface OpenCodeConfig {
-  model: string
   provider: string
 }
 
 /** Claude-specific AI configuration */
 export interface ClaudeConfig {
-  model: string
+  // Provider uses its own default model
 }
 
 /** OpenAI Codex-specific AI configuration */
 export interface CodexConfig {
-  model: string
+  // Provider uses its own default model
 }
 
 /** AI backend configuration */
@@ -94,7 +93,6 @@ export type PartialConfig = DeepPartial<GlobalConfig>
 /** CLI flags that can override configuration */
 export interface CLIOverrides {
   backend?: AIBackend
-  model?: string
   debug?: boolean
 }
 

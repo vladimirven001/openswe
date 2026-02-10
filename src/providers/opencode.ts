@@ -6,7 +6,6 @@
 
 import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand } from "./types"
 import type { Session } from "../store"
-import type { OpenCodeConfig } from "../config/types"
 
 // ============================================================================
 // Branding
@@ -44,10 +43,8 @@ export const openCodeProvider: Provider = {
 		_session: Session,
 		prompt?: string,
 		resumeSessionId?: string,
-		config?: Record<string, unknown>
+		_config?: Record<string, unknown>
 	): SpawnCommand {
-		const openCodeConfig = config as OpenCodeConfig | undefined
-
 		const args = []
 
 		// Without them, opencode launches in interactive TUI mode

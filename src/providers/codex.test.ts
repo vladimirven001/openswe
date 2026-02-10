@@ -89,29 +89,15 @@ describe("codexProvider", () => {
 	// ============================================================================
 
 	describe("buildSpawnCommand", () => {
-		test("builds basic command with default model", () => {
+		test("builds basic command with prompt", () => {
 			const session = makeSession()
 			const result = codexProvider.buildSpawnCommand(session, "Fix the bug")
 
 			expect(result.command).toBe("codex")
 			expect(result.args).toContain("--full-auto")
-			expect(result.args).toContain("--model")
-			expect(result.args).toContain("gpt-5-codex")
 			expect(result.args).toContain("Fix the bug")
-		})
-
-		test("uses custom model from config", () => {
-			const session = makeSession()
-			const result = codexProvider.buildSpawnCommand(
-				session,
-				"Fix the bug",
-				undefined,
-				{ model: "o3-pro" }
-			)
-
-			expect(result.args).toContain("--model")
-			expect(result.args).toContain("o3-pro")
-			expect(result.args).not.toContain("gpt-5-codex")
+			// Provider uses its own default model - no --model flag
+			expect(result.args).not.toContain("--model")
 		})
 
 		test("builds command without prompt", () => {
@@ -120,10 +106,10 @@ describe("codexProvider", () => {
 
 			expect(result.command).toBe("codex")
 			expect(result.args).toContain("--full-auto")
-			expect(result.args).toContain("--model")
-			expect(result.args).toContain("gpt-5-codex")
+			// Provider uses its own default model - no --model flag
+			expect(result.args).not.toContain("--model")
 			// No prompt in args
-			expect(result.args).toEqual(["--full-auto", "--model", "gpt-5-codex"])
+			expect(result.args).toEqual(["--full-auto"])
 		})
 
 		test("builds resume command with session ID", () => {
@@ -138,8 +124,8 @@ describe("codexProvider", () => {
 			expect(result.args[0]).toBe("resume")
 			expect(result.args[1]).toBe("prev-session-123")
 			expect(result.args).toContain("--full-auto")
-			expect(result.args).toContain("--model")
-			expect(result.args).toContain("gpt-5-codex")
+			// Provider uses its own default model - no --model flag
+			expect(result.args).not.toContain("--model")
 		})
 
 		test("resume command includes prompt when provided", () => {
@@ -153,20 +139,6 @@ describe("codexProvider", () => {
 			expect(result.args[0]).toBe("resume")
 			expect(result.args[1]).toBe("prev-session-123")
 			expect(result.args).toContain("Continue fixing")
-		})
-
-		test("resume command uses custom model from config", () => {
-			const session = makeSession()
-			const result = codexProvider.buildSpawnCommand(
-				session,
-				undefined,
-				"prev-session-123",
-				{ model: "o3" }
-			)
-
-			expect(result.args).toContain("--model")
-			expect(result.args).toContain("o3")
-			expect(result.args).not.toContain("gpt-5-codex")
 		})
 	})
 })
