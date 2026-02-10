@@ -34,7 +34,7 @@ const KEY_SECTIONS: KeySection[] = [
       { key: "n", description: "New session" },
       { key: "d", description: "Delete session" },
       { key: "p", description: "Pause/resume session" },
-      { key: "r", description: "Refresh data" },
+      { key: "r", description: "Reload session" },
     ],
   },
   {
