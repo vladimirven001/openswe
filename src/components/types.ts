@@ -87,6 +87,7 @@ export interface StatusBarProps {
   taskCount?: number
   backend?: string
   sessionId?: string
+  worktreeCommand?: string
   providerBranding?: ProviderBranding
   // Footer variant props (keybinding hints)
 }
