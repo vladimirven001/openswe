@@ -86,6 +86,7 @@ export function Preview(props: PreviewProps) {
   const colors = useColors()
   const duration = createMemo(() => formatDuration(props.startedAt))
   const isActive = createMemo(() => props.session?.status === "active")
+  const isPaused = createMemo(() => props.session?.status === "paused")
 
   // Resolve provider branding from session data if available, otherwise fall back to global prop
   const resolvedBranding = createMemo(() => {
@@ -182,10 +183,12 @@ export function Preview(props: PreviewProps) {
                 backgroundColor={terminalBackground()}
               >
                 <Show
-                  when={props.session?.status === "active" && props.snapshotLines && props.snapshotLines.length > 0}
+                  when={(props.session?.status === "active" || props.session?.status === "paused") && props.snapshotLines && props.snapshotLines.length > 0}
                   fallback={
                     <box height="100%" justifyContent="center" alignItems="center">
-                      <text fg={colors().text.muted}>Waiting for output...</text>
+                      <text fg={colors().text.muted}>
+                        {isPaused() ? "Session paused - press Enter to resume" : "Waiting for output..."}
+                      </text>
                     </box>
                   }
                 >
@@ -217,9 +220,19 @@ export function Preview(props: PreviewProps) {
                 <Footer
                   actions={[
                     { key: "Enter", label: "Attach" },
-                    { key: "tmux-prefix+d", label: "Detach" }
+                    { key: "tmux-prefix+d", label: "Detach" },
+                    { key: "p", label: "Pause" }
                   ]}
                   message={duration() ? `Running for ${duration()}` : undefined}
+                />
+              </Show>
+              
+              <Show when={isPaused()}>
+                <Footer
+                  actions={[
+                    { key: "Enter", label: "Resume" }
+                  ]}
+                  message="Session paused - AI process terminated"
                 />
               </Show>
           </box>

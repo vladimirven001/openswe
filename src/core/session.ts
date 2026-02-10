@@ -14,6 +14,7 @@ import {
   setPid,
   setAISessionData,
   setLines,
+  getAllLines,
   isValidPhase,
   getProject,
 } from "../store"
@@ -179,9 +180,31 @@ export class SessionManager {
       const provider = getProvider(backend)
       const providerConfig = this.config.ai[backend] as unknown as Record<string, unknown>
 
+      // Ensure Claude can use a deterministic session ID when starting new sessions
+      let effectiveSession = session
+      if (options.aiSessionData) {
+        effectiveSession = { ...session, aiSessionData: options.aiSessionData }
+      }
+
+      if (backend === "claude" && !options.resumeSessionId) {
+        const currentData = options.aiSessionData ?? session.aiSessionData
+        if (!currentData?.sessionId) {
+          const newData = {
+            backend,
+            sessionId: session.id,
+          }
+          setAISessionData(session.id, newData)
+          effectiveSession = { ...session, aiSessionData: newData }
+        } else if (!options.aiSessionData) {
+          effectiveSession = { ...session, aiSessionData: currentData }
+        }
+      } else if (!options.aiSessionData && session.aiSessionData) {
+        effectiveSession = { ...session, aiSessionData: session.aiSessionData }
+      }
+
       // Build spawn command using the session's provider
       const spawnCmd = provider.buildSpawnCommand(
-        session,
+        effectiveSession,
         options.prompt,
         options.resumeSessionId,
         providerConfig
@@ -304,6 +327,14 @@ export class SessionManager {
   }
 
   async pauseSession(sessionId: string): Promise<void> {
+    // Capture final state before killing
+    try {
+      const lines = await this.getSnapshot(sessionId)
+      logger.debug(`Captured final snapshot for ${sessionId}: ${lines.length} lines`)
+    } catch (e) {
+      logger.warn(`Failed to capture final snapshot for ${sessionId}:`, e)
+    }
+
     await this.processManager.kill(sessionId)
     this.cleanupSession(sessionId)
     updateSessionStatus(sessionId, "paused")
@@ -323,15 +354,14 @@ export class SessionManager {
   async getSnapshot(sessionId: string): Promise<string[]> {
     try {
       const snapshot = await this.processManager.getSnapshot(sessionId)
-      // Save to DB for persistence/caching if needed?
-      // For now just return
-      setLines(sessionId, snapshot.lines) // Update DB cache for when we are offline/paused
+      // Save to DB for persistence/caching
+      // If snapshot is empty, do we want to overwrite DB with empty?
+      // Yes, if tmux is cleared.
+      setLines(sessionId, snapshot.lines)
       return snapshot.lines
     } catch {
-      // If session not running, return cached lines from DB
-      const session = getSession(sessionId)
-      // return session?.outputBuffer ... (need to fetch from OB table)
-      return []
+      // If session not running or error, return cached lines from DB
+      return getAllLines(sessionId)
     }
   }
 
@@ -367,6 +397,22 @@ export class SessionManager {
     switch (event.type) {
       case "working":
         updateSessionPhase(sessionId, "working")
+        break
+      case "session_id":
+        if (event.payload) {
+          const currentSession = getSession(sessionId)
+          // Default to current provider backend if not set
+          const backend = currentSession?.aiSessionData?.backend ?? this.provider.id
+          
+          const newData = {
+            backend,
+            ...(currentSession?.aiSessionData || {}),
+            sessionId: event.payload,
+          }
+          
+          setAISessionData(sessionId, newData)
+          logger.debug(`Captured session ID for ${sessionId}: ${event.payload}`)
+        }
         break
       case "done":
         updateSessionPhase(sessionId, "completed")

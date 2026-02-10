@@ -10,6 +10,7 @@ export type ParsedEventType =
   | "phase"
   | "done"
   | "working"
+  | "session_id"
   | "raw"
 
 export interface ParsedEvent {
@@ -45,6 +46,13 @@ export function createParser(patterns: ParserPatterns): (line: string) => Parsed
 
     if (patterns.doneRegex.test(line)) {
       return { type: "done", line }
+    }
+
+    if (patterns.sessionIdRegex) {
+      const match = line.match(patterns.sessionIdRegex)
+      if (match) {
+        return { type: "session_id", payload: match[1], line }
+      }
     }
 
     return null

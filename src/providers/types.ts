@@ -98,6 +98,8 @@ export interface ParserPatterns {
 	workingRegex: RegExp
 	/** Pattern to detect completion */
 	doneRegex: RegExp
+	/** Pattern to detect session ID */
+	sessionIdRegex?: RegExp
 }
 
 // ============================================================================

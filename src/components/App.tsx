@@ -16,6 +16,7 @@ import {
   getProject,
   updateSessionStatus,
   getSession,
+  getAllLines,
 } from "../store"
 import { SessionManager } from "../core"
 import { generateSWEPrompt } from "../prompts"
@@ -161,15 +162,22 @@ export function App(props: AppProps) {
     // Set up faster refresh for preview activities
     const previewId = setInterval(() => {
       const session = selectedSession()
-      if (session && session.status === "active") {
-        sessionManager.getSnapshot(session.id).then(lines => {
+      if (session) {
+        if (session.status === "active") {
+          // Live preview for active sessions
+          sessionManager.getSnapshot(session.id).then(lines => {
+            setSnapshotLines(lines)
+          }).catch(() => setSnapshotLines([]))
+          
+          // Sync terminal size if not currently attaching/attached
+          if (!isAttaching()) {
+            const size = previewSize()
+            sessionManager.resizeSession(session.id, size.cols, size.rows).catch(() => {})
+          }
+        } else if (session.status === "paused") {
+          // Load stored buffer for paused sessions
+          const lines = getAllLines(session.id)
           setSnapshotLines(lines)
-        }).catch(() => setSnapshotLines([]))
-        
-        // Sync terminal size if not currently attaching/attached
-        if (!isAttaching()) {
-          const size = previewSize()
-          sessionManager.resizeSession(session.id, size.cols, size.rows).catch(() => {})
         }
       }
     }, REFRESH_INTERVAL)
@@ -203,8 +211,15 @@ export function App(props: AppProps) {
       } else {
         setSessionStartedAt(undefined)
       }
+      
+      // Load stored preview for paused sessions
+      if (session.status === "paused") {
+        const lines = getAllLines(session.id)
+        setSnapshotLines(lines)
+      }
     } else {
       setSessionStartedAt(undefined)
+      setSnapshotLines([])
     }
   })
 
@@ -284,11 +299,24 @@ export function App(props: AppProps) {
         const session = selectedSession()
         if (session) {
           if (session.status === "paused") {
+            // Resume: just update status to queued so Enter can start it
             updateSessionStatus(session.id, "queued")
-          } else if (session.status === "active" || session.status === "queued") {
+            loadSessions()
+          } else if (session.status === "active") {
+            // Actually pause the session: kill tmux, save preview, update status
+            (async () => {
+              try {
+                await sessionManager.pauseSession(session.id)
+                loadSessions()
+              } catch (error) {
+                logger.error("Failed to pause session:", error)
+              }
+            })()
+          } else if (session.status === "queued") {
+            // Just mark as paused without killing anything
             updateSessionStatus(session.id, "paused")
+            loadSessions()
           }
-          loadSessions()
         }
         break
       }
@@ -308,9 +336,10 @@ export function App(props: AppProps) {
           try {
             // If session needs starting, start it first and await completion
             if (session.status === "queued" || session.status === "paused") {
+              const isResuming = !!session.aiSessionData?.sessionId
               await sessionManager.startSession({
                 sessionId: session.id,
-                prompt: session.issueNumber ? generateSWEPrompt(session) : undefined,
+                prompt: isResuming ? undefined : (session.issueNumber ? generateSWEPrompt(session) : undefined),
                 resumeSessionId: session.aiSessionData?.sessionId,
               })
             }

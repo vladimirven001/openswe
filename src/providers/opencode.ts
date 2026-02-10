@@ -28,6 +28,7 @@ const branding: ProviderBranding = {
 const parserPatterns: ParserPatterns = {
 	workingRegex: /(?:starting|begin|entering).+(?:implementation|coding|execution)|(?:mode|status):\s*(?:implement|coding)/i,
 	doneRegex: /\[?OPENSWE:DONE\]?/i,
+	sessionIdRegex: /(?:Session ID|session id):\s*([a-zA-Z0-9-]+)/i,
 }
 
 // ============================================================================

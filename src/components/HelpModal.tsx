@@ -33,7 +33,7 @@ const KEY_SECTIONS: KeySection[] = [
     bindings: [
       { key: "n", description: "New session" },
       { key: "d", description: "Delete session" },
-      { key: "p", description: "Pause/resume session" },
+      { key: "p", description: "Pause active session (kills AI, keeps preview)" },
       { key: "r", description: "Refresh data" },
     ],
   },

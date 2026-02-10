@@ -28,6 +28,7 @@ const parserPatterns: ParserPatterns = {
 	// Claude Code outputs status messages differently
 	workingRegex: /(?:starting|begin|entering).+(?:implementation|coding|execution)|(?:mode|status):\s*(?:implement|coding)|editing|writing.*file/i,
 	doneRegex: /\[?OPENSWE:DONE\]?|completed successfully|task completed/i,
+	sessionIdRegex: /(?:Session ID|session id):\s*([a-zA-Z0-9-]+)/i,
 }
 
 // ============================================================================
@@ -41,7 +42,7 @@ export const claudeProvider: Provider = {
 	parserPatterns,
 
 	buildSpawnCommand(
-		_session: Session,
+		session: Session,
 		prompt?: string,
 		resumeSessionId?: string,
 		config?: Record<string, unknown>
@@ -57,6 +58,8 @@ export const claudeProvider: Provider = {
 
 		if (resumeSessionId) {
 			args.push("--resume", resumeSessionId)
+		} else if (session.aiSessionData?.sessionId) {
+			args.push("--session-id", session.aiSessionData.sessionId)
 		}
 
 		// Add the prompt as the final argument (omit for interactive mode)
