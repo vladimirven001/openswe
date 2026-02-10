@@ -177,14 +177,13 @@ export class SessionManager {
       // Use session's backend if available, otherwise fall back to global config
       const backend = options.aiSessionData?.backend ?? session.aiSessionData?.backend ?? this.config.ai.backend
       const provider = getProvider(backend)
-      const providerConfig = this.config.ai[backend] as unknown as Record<string, unknown>
 
       // Build spawn command using the session's provider
+      // Provider uses its own default model - no model configuration needed
       const spawnCmd = provider.buildSpawnCommand(
         session,
         options.prompt,
-        options.resumeSessionId,
-        providerConfig
+        options.resumeSessionId
       )
 
       // Filter env to remove undefined values

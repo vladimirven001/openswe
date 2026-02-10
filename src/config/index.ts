@@ -93,17 +93,6 @@ function applyCLIOverrides(config: GlobalConfig, cli: CLIOverrides): GlobalConfi
     result.ai.backend = cli.backend
   }
 
-  if (cli.model !== undefined) {
-    const activeBackend = result.ai.backend
-    if (activeBackend === "opencode") {
-      result.ai.opencode.model = cli.model
-    } else if (activeBackend === "claude") {
-      result.ai.claude.model = cli.model
-    } else if (activeBackend === "codex") {
-      result.ai.codex.model = cli.model
-    }
-  }
-
   if (cli.debug === true) {
     result.advanced.logLevel = "debug"
   }
