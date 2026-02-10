@@ -314,7 +314,11 @@ export function App(props: AppProps) {
             if (updatedSession?.status === "active") {
               // Resize to full terminal size for interactive use
               await sessionManager.resizeSession(session.id, termSize().cols, termSize().rows)
-              
+
+              // Set terminal and window title to "openswe"
+              process.stdout.write("\x1b]0;openswe\x07")
+              await sessionManager.setWindowTitle(session.id, "openswe")
+
               const cmd = sessionManager.getAttachCommand(session.id)
 
               // Suspend OpenTUI before yielding terminal to tmux

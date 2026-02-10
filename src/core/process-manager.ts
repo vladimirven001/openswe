@@ -49,4 +49,9 @@ export interface ProcessManager {
    * Resize the session terminal
    */
   resize(id: string, cols: number, rows: number): Promise<void>
+
+  /**
+   * Set the window title for the session
+   */
+  setWindowTitle(id: string, title: string): Promise<void>
 }
