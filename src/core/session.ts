@@ -349,6 +349,13 @@ export class SessionManager {
     await this.processManager.resize(sessionId, cols, rows)
   }
 
+  /**
+   * Set the window title for the session
+   */
+  async setWindowTitle(sessionId: string, title: string): Promise<void> {
+    await this.processManager.setWindowTitle(sessionId, title)
+  }
+
   private cleanupSession(sessionId: string) {
     const active = this.activeSessions.get(sessionId)
     if (active) {
