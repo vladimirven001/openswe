@@ -16,6 +16,7 @@ import {
   setLines,
   isValidPhase,
   getProject,
+  resetSessionForReload,
 } from "../store"
 import type { AISessionData } from "../store"
 import type { GlobalConfig, AIBackend } from "../config"
@@ -30,6 +31,7 @@ import { mkdir, open } from "fs/promises"
 import { getProvider } from "../providers"
 import type { Provider } from "../providers"
 import { createWorktree } from "../git"
+import { generateSWEPrompt } from "../prompts"
 
 export interface StartSessionOptions {
   sessionId: string
@@ -315,6 +317,41 @@ export class SessionManager {
     this.cleanupSession(sessionId)
     updateSessionStatus(sessionId, "queued")
     setPid(sessionId, null)
+  }
+
+  /**
+   * Reload a session - stop it and restart with preserved AI session data
+   *
+   * This closes the current session and restarts it using the same AI provider
+   * and session ID, allowing the conversation to continue from where it left off.
+   *
+   * @param sessionId - The session to reload
+   */
+  async reloadSession(sessionId: string): Promise<void> {
+    const session = getSession(sessionId)
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    logger.info(`Reloading session "${session.name}" (${sessionId})`)
+
+    // 1. Stop existing session if running
+    if (this.activeSessions.has(sessionId)) {
+      await this.stopSession(sessionId)
+    }
+
+    // 2. Reset session state in DB (clear output buffer, reset phase/status)
+    resetSessionForReload(sessionId)
+
+    // 3. Restart with preserved aiSessionData
+    await this.startSession({
+      sessionId: session.id,
+      prompt: session.issueNumber ? generateSWEPrompt(session) : undefined,
+      resumeSessionId: session.aiSessionData?.sessionId,
+      aiSessionData: session.aiSessionData,
+    })
+
+    logger.info(`Session "${session.name}" reloaded successfully`)
   }
 
   /**

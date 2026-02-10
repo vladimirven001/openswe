@@ -293,9 +293,17 @@ export function App(props: AppProps) {
         break
       }
 
-      case "r":
-        loadSessions()
+      case "r": {
+        const session = selectedSession()
+        if (session) {
+          sessionManager.reloadSession(session.id).then(() => {
+            loadSessions()
+          }).catch((error) => {
+            logger.error("Failed to reload session:", error)
+          })
+        }
         break
+      }
 
       case "return":
         // Full takeover mode - start session if needed, then attach
