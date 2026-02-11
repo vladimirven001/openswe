@@ -2,6 +2,8 @@
 
 openswe is an AI coding agent (opencode, claude code) orchestration tool. It connects to github, fetches open issues, and starts working on them for you.
 
+![Demo](assets/demo.png)
+
 ## Requirements
 
 Before running openswe, ensure you have the following installed:
