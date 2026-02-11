@@ -30,6 +30,7 @@ export type Status =
 export interface AISessionData {
   backend: "opencode" | "claude" | "codex"
   sessionId?: string
+  sessionTitle?: string
   [key: string]: unknown
 }
 
@@ -189,6 +190,9 @@ export function isValidAISessionData(val: unknown): val is AISessionData {
 
   const sessionId = (val as { sessionId?: unknown }).sessionId
   if (sessionId !== undefined && typeof sessionId !== "string") return false
+
+  const sessionTitle = (val as { sessionTitle?: unknown }).sessionTitle
+  if (sessionTitle !== undefined && typeof sessionTitle !== "string") return false
 
   return true
 }

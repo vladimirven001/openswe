@@ -5,6 +5,10 @@
  * Handles session completion.
  */
 
+import { homedir } from "os"
+import { dirname, join } from "path"
+import { existsSync } from "fs"
+import { mkdir, open, readdir } from "fs/promises"
 import {
   getSession,
   getSessionsByStatus,
@@ -15,8 +19,6 @@ import {
   setAISessionData,
   setLines,
   getAllLines,
-  isValidPhase,
-  getProject,
   resetSessionForReload,
 } from "../store"
 import type { AISessionData } from "../store"
@@ -26,13 +28,11 @@ import type { ParsedEvent } from "./parser"
 import { TmuxManager } from "./tmux"
 import { logger } from "../utils/logger"
 import { getSessionLogPath } from "../workspace/paths"
-import { dirname } from "path"
-import { existsSync } from "fs"
-import { mkdir, open } from "fs/promises"
 import { getProvider } from "../providers"
 import type { Provider } from "../providers"
 import { createWorktree } from "../git"
 import { generateSWEPrompt } from "../prompts"
+import { getStableSessionTitle } from "../utils/session-title"
 
 export interface StartSessionOptions {
   sessionId: string
@@ -44,6 +44,18 @@ export interface StartSessionOptions {
 interface ActiveSession {
   stopTail: () => void
   logPath: string
+}
+
+interface SessionCaptureInput {
+	sessionId: string
+	backend: AIBackend
+	sessionTitle: string
+	worktreePath: string
+	startedAt: number
+}
+
+interface OpenCodeCaptureInput extends SessionCaptureInput {
+	existingIds: Set<string>
 }
 
 export class SessionManager {
@@ -170,45 +182,62 @@ export class SessionManager {
       // Auto-transition phase: planning if prompt-driven, working if interactive
       updateSessionPhase(session.id, options.prompt ? "planning" : "working")
 
-      if (options.aiSessionData !== undefined) {
-        setAISessionData(session.id, options.aiSessionData)
-      }
-
       const logPath = getSessionLogPath(this.projectRoot, session.id)
       await this.ensureLogFile(logPath)
 
       // Use session's backend if available, otherwise fall back to global config
       const backend = options.aiSessionData?.backend ?? session.aiSessionData?.backend ?? this.config.ai.backend
       const provider = getProvider(backend)
+      const stableTitle = getStableSessionTitle(session)
+      let resumeSessionId = options.resumeSessionId
 
-      // Ensure Claude can use a deterministic session ID when starting new sessions
-      let effectiveSession = session
-      if (options.aiSessionData) {
-        effectiveSession = { ...session, aiSessionData: options.aiSessionData }
+      const existingData = options.aiSessionData ?? session.aiSessionData ?? null
+      const nextData: AISessionData = {
+        ...(existingData ?? { backend }),
+        backend,
+        sessionTitle: stableTitle,
       }
 
-      if (backend === "claude" && !options.resumeSessionId) {
-        const currentData = options.aiSessionData ?? session.aiSessionData
-        if (!currentData?.sessionId) {
-          const newData = {
-            backend,
-            sessionId: session.id,
+      if (backend === "claude" && !options.resumeSessionId && !nextData.sessionId) {
+        nextData.sessionId = session.id
+      }
+
+      // Capture existing OpenCode session IDs before spawning for diffing
+      let existingOpenCodeIds = new Set<string>()
+      if (backend === "opencode" && !resumeSessionId && !nextData.sessionId) {
+        try {
+          const list = await this.runOpenCodeSessionList()
+          if (list) {
+             const sessions = this.parseOpenCodeSessionList(list)
+             sessions.forEach(s => existingOpenCodeIds.add(s.id))
           }
-          setAISessionData(session.id, newData)
-          effectiveSession = { ...session, aiSessionData: newData }
-        } else if (!options.aiSessionData) {
-          effectiveSession = { ...session, aiSessionData: currentData }
+        } catch (e) {
+          logger.warn("Failed to list existing OpenCode sessions", e)
         }
-      } else if (!options.aiSessionData && session.aiSessionData) {
-        effectiveSession = { ...session, aiSessionData: session.aiSessionData }
       }
+
+      const shouldPersistData =
+        !existingData ||
+        existingData.backend !== nextData.backend ||
+        existingData.sessionId !== nextData.sessionId ||
+        existingData.sessionTitle !== nextData.sessionTitle
+
+      if (shouldPersistData || options.aiSessionData !== undefined) {
+        setAISessionData(session.id, nextData)
+      }
+
+      const effectiveSession = { ...session, aiSessionData: nextData }
 
       // Build spawn command using the session's provider
-      // Provider uses its own default model - no model configuration needed
+      // For OpenCode: If we have a prompt but no ID, we send the prompt (to create session).
+      // If we have an ID (resume), we attach (no prompt).
+      const spawnPrompt = (backend === "opencode" && (resumeSessionId || nextData.sessionId)) ? undefined : options.prompt
+      
       const spawnCmd = provider.buildSpawnCommand(
         effectiveSession,
-        options.prompt,
-        options.resumeSessionId
+        spawnPrompt,
+        resumeSessionId,
+        { sessionTitle: stableTitle }
       )
 
       // Filter env to remove undefined values
@@ -242,6 +271,8 @@ export class SessionManager {
         logger.info(`Worktree recreated for session "${session.name}" at ${session.worktreePath}`)
       }
 
+      const startedAt = Date.now()
+
       // Spawn tmux session
       const pid = await this.processManager.spawn(
         session.id,
@@ -256,6 +287,28 @@ export class SessionManager {
 
       // Start tailing logs for parsing
       await this.attachLogTail(session.id)
+
+      // Capture session ID in background (fire-and-forget) if new
+      if (!resumeSessionId && !nextData.sessionId) {
+        if (backend === "codex") {
+           this.captureProviderSessionId({
+             sessionId: session.id,
+             backend,
+             sessionTitle: stableTitle,
+             worktreePath: session.worktreePath,
+             startedAt,
+           })
+        } else if (backend === "opencode") {
+           this.captureOpenCodeSessionId({
+             sessionId: session.id,
+             backend,
+             sessionTitle: stableTitle,
+             worktreePath: session.worktreePath,
+             startedAt,
+             existingIds: existingOpenCodeIds,
+           })
+        }
+      }
 
     } catch (error) {
       updateSessionStatus(session.id, "failed")
@@ -327,6 +380,202 @@ export class SessionManager {
     })
   }
 
+  private async captureOpenCodeSessionId(input: OpenCodeCaptureInput): Promise<void> {
+    // Poll for a new session ID that wasn't in the existing list
+    for (let i = 0; i < 15; i++) { 
+       await this.sleep(1000)
+       
+       const list = await this.runOpenCodeSessionList()
+       if (!list) continue
+
+       const sessions = this.parseOpenCodeSessionList(list)
+       // Find sessions not in existingIds
+       const newSessions = sessions.filter(s => !input.existingIds.has(s.id))
+       
+       if (newSessions.length > 0) {
+         const match = newSessions[0]
+         if (match) {
+            const current = getSession(input.sessionId)
+            const backend = current?.aiSessionData?.backend ?? "opencode"
+            const newData: AISessionData = {
+                ...(current?.aiSessionData ?? { backend }),
+                backend,
+                sessionId: match.id,
+                sessionTitle: input.sessionTitle,
+            }
+            setAISessionData(input.sessionId, newData)
+            logger.debug("Captured OpenCode session id", { sessionId: input.sessionId, providerSessionId: match.id })
+            return
+         }
+       }
+    }
+    logger.warn("Failed to capture OpenCode session ID after spawning", { sessionId: input.sessionId })
+  }
+
+  private async runOpenCodeSessionList(): Promise<string | null> {
+    try {
+      const proc = Bun.spawn(["opencode", "session", "list"], {
+        stdout: "pipe",
+        stderr: "pipe",
+      })
+      const exitCode = await proc.exited
+      if (exitCode !== 0) {
+        const err = await new Response(proc.stderr).text()
+        logger.warn("OpenCode session list failed", { exitCode, err: err.trim() })
+        return null
+      }
+      return await new Response(proc.stdout).text()
+    } catch (error) {
+      logger.warn("OpenCode session list command error", { error })
+      return null
+    }
+  }
+
+  private parseOpenCodeSessionList(output: string): Array<{ id: string; title: string }> {
+    const results: Array<{ id: string; title: string }> = []
+    const lines = output.split("\n")
+    const rowRegex = /^(ses_[A-Za-z0-9]+)\s+(.*?)\s{2,}.+$/
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith("Session ID") || /^[-\s]+$/.test(trimmed)) {
+        continue
+      }
+
+      const match = trimmed.match(rowRegex)
+      if (!match) continue
+      const id = match[1]
+      const title = match[2]
+      if (id && title) {
+        results.push({ id, title })
+      }
+    }
+
+    return results
+  }
+
+  private async captureProviderSessionId(input: SessionCaptureInput): Promise<void> {
+    try {
+      if (input.backend === "codex") {
+        await this.captureCodexSessionId(input)
+      }
+    } catch (error) {
+      logger.warn("Failed to capture provider session id", {
+        backend: input.backend,
+        sessionId: input.sessionId,
+        error,
+      })
+    }
+  }
+
+  private async captureCodexSessionId(input: SessionCaptureInput): Promise<void> {
+    const sessionId = await this.findCodexSessionId(input.worktreePath, input.startedAt)
+    if (!sessionId) {
+      logger.warn("Codex session id not found", {
+        sessionId: input.sessionId,
+        worktreePath: input.worktreePath,
+      })
+      return
+    }
+
+    const current = getSession(input.sessionId)
+    const backend = current?.aiSessionData?.backend ?? "codex"
+    const newData: AISessionData = {
+      ...(current?.aiSessionData ?? { backend }),
+      backend,
+      sessionId,
+      sessionTitle: input.sessionTitle,
+    }
+
+    setAISessionData(input.sessionId, newData)
+    logger.debug("Captured Codex session id", { sessionId: input.sessionId, providerSessionId: sessionId })
+  }
+
+  private async findCodexSessionId(worktreePath: string, startedAt: number): Promise<string | null> {
+    const baseDir = join(homedir(), ".codex", "sessions")
+    if (!existsSync(baseDir)) return null
+
+    const files = await this.collectCodexSessionFiles(baseDir)
+    if (files.length === 0) return null
+
+    const entries: Array<{ id: string; timestamp: number }> = []
+
+    for (const filePath of files) {
+      const meta = await this.readCodexSessionMeta(filePath)
+      if (!meta) continue
+      if (meta.cwd !== worktreePath) continue
+      entries.push({ id: meta.id, timestamp: meta.timestamp })
+    }
+
+    if (entries.length === 0) return null
+
+    const windowStart = startedAt - 30000
+    const recent = entries.filter((entry) => entry.timestamp >= windowStart)
+    const candidates = recent.length > 0 ? recent : entries
+    if (candidates.length === 0) return null
+
+    let best = candidates[0]!
+    let bestDiff = Math.abs(best.timestamp - startedAt)
+
+    for (const entry of candidates.slice(1)) {
+      const diff = Math.abs(entry.timestamp - startedAt)
+      if (diff < bestDiff) {
+        best = entry
+        bestDiff = diff
+      }
+    }
+
+    return best.id
+  }
+
+  private async collectCodexSessionFiles(dir: string): Promise<string[]> {
+    const entries = await readdir(dir, { withFileTypes: true })
+    const files: string[] = []
+
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        files.push(...(await this.collectCodexSessionFiles(fullPath)))
+      } else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+        files.push(fullPath)
+      }
+    }
+
+    return files
+  }
+
+  private async readCodexSessionMeta(filePath: string): Promise<{ id: string; timestamp: number; cwd: string } | null> {
+    try {
+      const text = await Bun.file(filePath).text()
+      const firstLine = text.split("\n")[0]
+      if (!firstLine) return null
+
+      const parsed = JSON.parse(firstLine) as {
+        type?: string
+        payload?: { id?: string; timestamp?: string; cwd?: string }
+      }
+      if (parsed.type !== "session_meta" || !parsed.payload?.id || !parsed.payload?.timestamp || !parsed.payload?.cwd) {
+        return null
+      }
+
+      const timestamp = Date.parse(parsed.payload.timestamp)
+      if (Number.isNaN(timestamp)) return null
+
+      return {
+        id: parsed.payload.id,
+        timestamp,
+        cwd: parsed.payload.cwd,
+      }
+    } catch (error) {
+      logger.warn("Failed to read Codex session metadata", { filePath, error })
+      return null
+    }
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
   async pauseSession(sessionId: string): Promise<void> {
     // Capture final state before killing
     try {
@@ -390,11 +639,16 @@ export class SessionManager {
   async getSnapshot(sessionId: string): Promise<string[]> {
     try {
       const snapshot = await this.processManager.getSnapshot(sessionId)
-      // Save to DB for persistence/caching
-      // If snapshot is empty, do we want to overwrite DB with empty?
-      // Yes, if tmux is cleared.
-      setLines(sessionId, snapshot.lines)
-      return snapshot.lines
+
+      // Only persist to DB if we got actual content from tmux.
+      // When tmux returns empty lines (e.g. session just killed during pause),
+      // we must NOT overwrite the previously-stored good snapshot -- otherwise
+      // the preview for paused sessions would show a black screen.
+      if (snapshot.lines.length > 0) {
+        setLines(sessionId, snapshot.lines)
+      }
+
+      return snapshot.lines.length > 0 ? snapshot.lines : getAllLines(sessionId)
     } catch {
       // If session not running or error, return cached lines from DB
       return getAllLines(sessionId)

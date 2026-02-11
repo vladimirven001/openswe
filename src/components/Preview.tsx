@@ -183,14 +183,8 @@ export function Preview(props: PreviewProps) {
                 backgroundColor={terminalBackground()}
               >
                 <Show
-                  when={(props.session?.status === "active" || props.session?.status === "paused") && props.snapshotLines && props.snapshotLines.length > 0}
-                  fallback={
-                    <box height="100%" justifyContent="center" alignItems="center">
-                      <text fg={colors().text.muted}>
-                        {isPaused() ? "Session paused - press Enter to resume" : "Waiting for output..."}
-                      </text>
-                    </box>
-                  }
+                  when={props.snapshotLines && props.snapshotLines.length > 0}
+                  fallback={null}
                 >
                   <For each={props.snapshotLines}>
                     {(line) => {
@@ -232,7 +226,6 @@ export function Preview(props: PreviewProps) {
                   actions={[
                     { key: "Enter", label: "Resume" }
                   ]}
-                  message="Session paused - AI process terminated"
                 />
               </Show>
           </box>
