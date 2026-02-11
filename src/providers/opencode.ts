@@ -4,7 +4,7 @@
  * Supports the OpenCode CLI (https://github.com/opencode-ai/opencode)
  */
 
-import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand } from "./types"
+import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 
 // ============================================================================
@@ -27,6 +27,7 @@ const branding: ProviderBranding = {
 const parserPatterns: ParserPatterns = {
 	workingRegex: /(?:starting|begin|entering).+(?:implementation|coding|execution)|(?:mode|status):\s*(?:implement|coding)/i,
 	doneRegex: /\[?OPENSWE:DONE\]?/i,
+	sessionIdRegex: /(?:Session ID|session id):\s*([a-zA-Z0-9_-]+)/i,
 }
 
 // ============================================================================
@@ -43,11 +44,10 @@ export const openCodeProvider: Provider = {
 		_session: Session,
 		prompt?: string,
 		resumeSessionId?: string,
-		_config?: Record<string, unknown>
+		options?: SpawnCommandOptions
 	): SpawnCommand {
-		const args = []
+		const args: string[] = []
 
-		// Without them, opencode launches in interactive TUI mode
 		if (prompt) {
 			args.push("--agent", "plan", "--prompt", prompt)
 		}

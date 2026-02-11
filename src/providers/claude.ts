@@ -4,7 +4,7 @@
  * Supports the Claude CLI (https://docs.anthropic.com/claude-code)
  */
 
-import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand } from "./types"
+import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 
 // ============================================================================
@@ -27,6 +27,7 @@ const parserPatterns: ParserPatterns = {
 	// Claude Code outputs status messages differently
 	workingRegex: /(?:starting|begin|entering).+(?:implementation|coding|execution)|(?:mode|status):\s*(?:implement|coding)|editing|writing.*file/i,
 	doneRegex: /\[?OPENSWE:DONE\]?|completed successfully|task completed/i,
+	sessionIdRegex: /(?:Session ID|session id):\s*([a-zA-Z0-9_-]+)/i,
 }
 
 // ============================================================================
@@ -40,10 +41,10 @@ export const claudeProvider: Provider = {
 	parserPatterns,
 
 	buildSpawnCommand(
-		_session: Session,
+		session: Session,
 		prompt?: string,
 		resumeSessionId?: string,
-		_config?: Record<string, unknown>
+		_options?: SpawnCommandOptions
 	): SpawnCommand {
 		// Run Claude Code interactively (no --print flag)
 		// User can attach to the tmux session to review and approve changes
@@ -51,6 +52,8 @@ export const claudeProvider: Provider = {
 
 		if (resumeSessionId) {
 			args.push("--resume", resumeSessionId)
+		} else if (session.aiSessionData?.sessionId) {
+			args.push("--session-id", session.aiSessionData.sessionId)
 		}
 
 		// Add the prompt as the final argument (omit for interactive mode)

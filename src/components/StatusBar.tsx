@@ -63,7 +63,7 @@ function HeaderBar(props: {
       {/* Center: Worktree command */}
       <box flexDirection="row" gap={1}>
         <Show when={props.worktreeCommand}>
-          <text fg={colors().text.inverse} opacity={0.8}>📁 {props.worktreeCommand}</text>
+          <text fg={colors().text.inverse} opacity={0.8}>{props.worktreeCommand}</text>
         </Show>
       </box>
 

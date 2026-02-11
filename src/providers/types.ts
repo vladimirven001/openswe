@@ -42,7 +42,7 @@ export interface Provider {
 		session: Session,
 		prompt?: string,
 		resumeSessionId?: string,
-		config?: Record<string, unknown>
+		options?: SpawnCommandOptions
 	): SpawnCommand
 
 	/**
@@ -56,6 +56,14 @@ export interface Provider {
 	 * @returns Version string or null if not installed
 	 */
 	getVersion(): Promise<string | null>
+}
+
+// ============================================================================
+// Spawn Options
+// ============================================================================
+
+export interface SpawnCommandOptions {
+	sessionTitle?: string
 }
 
 // ============================================================================
@@ -98,6 +106,8 @@ export interface ParserPatterns {
 	workingRegex: RegExp
 	/** Pattern to detect completion */
 	doneRegex: RegExp
+	/** Pattern to detect session ID */
+	sessionIdRegex?: RegExp
 }
 
 // ============================================================================

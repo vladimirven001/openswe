@@ -60,10 +60,10 @@ export function HelpModal(props: HelpModalProps) {
 
   useKeyboard((event) => {
     switch (event.name) {
-        case "escape":
+      case "escape":
         props.onClose()
         break
-	}
+    }
   })
 
   return (

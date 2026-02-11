@@ -4,7 +4,7 @@
  * Supports the Codex CLI (https://github.com/openai/codex)
  */
 
-import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand } from "./types"
+import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 
 // ============================================================================
@@ -43,7 +43,7 @@ export const codexProvider: Provider = {
 		_session: Session,
 		prompt?: string,
 		resumeSessionId?: string,
-		_config?: Record<string, unknown>
+		_options?: SpawnCommandOptions
 	): SpawnCommand {
 		// Resume a previous session
 		if (resumeSessionId) {

@@ -86,6 +86,7 @@ export function Preview(props: PreviewProps) {
   const colors = useColors()
   const duration = createMemo(() => formatDuration(props.startedAt))
   const isActive = createMemo(() => props.session?.status === "active")
+  const isPaused = createMemo(() => props.session?.status === "paused")
 
   // Resolve provider branding from session data if available, otherwise fall back to global prop
   const resolvedBranding = createMemo(() => {
@@ -182,12 +183,8 @@ export function Preview(props: PreviewProps) {
                 backgroundColor={terminalBackground()}
               >
                 <Show
-                  when={props.session?.status === "active" && props.snapshotLines && props.snapshotLines.length > 0}
-                  fallback={
-                    <box height="100%" justifyContent="center" alignItems="center">
-                      <text fg={colors().text.muted}>Waiting for output...</text>
-                    </box>
-                  }
+                  when={props.snapshotLines && props.snapshotLines.length > 0}
+                  fallback={null}
                 >
                   <For each={props.snapshotLines}>
                     {(line) => {
@@ -217,9 +214,18 @@ export function Preview(props: PreviewProps) {
                 <Footer
                   actions={[
                     { key: "Enter", label: "Attach" },
-                    { key: "tmux-prefix+d", label: "Detach" }
+                    { key: "tmux-prefix+d", label: "Detach" },
+                    { key: "p", label: "Pause" }
                   ]}
                   message={duration() ? `Running for ${duration()}` : undefined}
+                />
+              </Show>
+              
+              <Show when={isPaused()}>
+                <Footer
+                  actions={[
+                    { key: "Enter", label: "Resume" }
+                  ]}
                 />
               </Show>
           </box>
