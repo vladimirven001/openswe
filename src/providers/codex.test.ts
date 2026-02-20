@@ -88,6 +88,25 @@ describe("codexProvider", () => {
 	// buildSpawnCommand
 	// ============================================================================
 
+	describe("session ID lifecycle", () => {
+		test("rejects OpenSWE tmux session names", () => {
+			expect(codexProvider.isValidSessionId("openswe-abc123")).toBe(false)
+			expect(codexProvider.isValidSessionId("session_abc123")).toBe(true)
+		})
+
+		test("prefers explicit resume session ID when valid", () => {
+			const session = makeSession({ aiSessionData: { backend: "codex", sessionId: "stored_id" } })
+			const resumeSessionId = codexProvider.getResumeSessionId(session, "explicit_id")
+			expect(resumeSessionId).toBe("explicit_id")
+		})
+
+		test("uses stored session ID when explicit ID is invalid", () => {
+			const session = makeSession({ aiSessionData: { backend: "codex", sessionId: "stored_id" } })
+			const resumeSessionId = codexProvider.getResumeSessionId(session, "openswe-invalid")
+			expect(resumeSessionId).toBe("stored_id")
+		})
+	})
+
 	describe("buildSpawnCommand", () => {
 		test("builds basic command with prompt", () => {
 			const session = makeSession()
