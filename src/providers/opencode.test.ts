@@ -104,6 +104,25 @@ describe("openCodeProvider", () => {
 	// buildSpawnCommand
 	// ============================================================================
 
+	describe("session ID lifecycle", () => {
+		test("validates provider session IDs", () => {
+			expect(openCodeProvider.isValidSessionId("ses_abc123")).toBe(true)
+			expect(openCodeProvider.isValidSessionId("openswe-abc123")).toBe(false)
+		})
+
+		test("resolves explicit resume session ID when valid", () => {
+			const session = makeSession({ aiSessionData: { backend: "opencode", sessionId: "ses_old" } })
+			const resumeSessionId = openCodeProvider.getResumeSessionId(session, "ses_new")
+			expect(resumeSessionId).toBe("ses_new")
+		})
+
+		test("falls back to stored session ID when explicit ID is invalid", () => {
+			const session = makeSession({ aiSessionData: { backend: "opencode", sessionId: "ses_old" } })
+			const resumeSessionId = openCodeProvider.getResumeSessionId(session, "openswe-bad")
+			expect(resumeSessionId).toBe("ses_old")
+		})
+	})
+
 	describe("buildSpawnCommand", () => {
 		test("builds command with prompt", () => {
 			const session = makeSession()

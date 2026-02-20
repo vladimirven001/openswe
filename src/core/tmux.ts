@@ -79,14 +79,12 @@ export class TmuxManager implements ProcessManager {
     // -x: width (default 80 is too small for modern screens)
     // -y: height (default 24 is too small)
     const createProc = Bun.spawn([
-      "tmux", "new-session", 
-      "-d", 
-      "-s", sessionName, 
+      "tmux", "new-session",
+      "-d",
+      "-s", sessionName,
       "-x", "140",
       "-y", "50",
       "-c", cwd,
-      // We start with a shell to ensure env vars are loaded if needed, or just run the command
-      fullCommand
     ], {
       env: { ...process.env, ...env },
       stderr: "pipe"
@@ -104,6 +102,7 @@ export class TmuxManager implements ProcessManager {
     const escapedLogPath = logPath.replace(/'/g, "'\\''")
     const pipeProc = Bun.spawn([
       "tmux", "pipe-pane",
+      "-o",
       "-t", sessionName,
       `cat >> '${escapedLogPath}'`  // Use append mode and single quotes for safety
     ], { stderr: "pipe" })
@@ -112,6 +111,20 @@ export class TmuxManager implements ProcessManager {
     if (pipeExit !== 0) {
       const err = await new Response(pipeProc.stderr).text()
       logger.warn(`pipe-pane setup failed for ${sessionName}: ${err}`)
+    }
+
+    // 2.1 Start command after pipe-pane is attached to avoid losing early output
+    const respawnProc = Bun.spawn([
+      "tmux", "respawn-pane",
+      "-k",
+      "-t", `${sessionName}:0.0`,
+      fullCommand
+    ], { stderr: "pipe" })
+
+    const respawnExit = await respawnProc.exited
+    if (respawnExit !== 0) {
+      const err = await new Response(respawnProc.stderr).text()
+      throw new Error(`Failed to start command in tmux session: ${err}`)
     }
 
     // 2.5 Disable status bar to reclaim vertical space
@@ -202,7 +215,9 @@ export class TmuxManager implements ProcessManager {
   }
 
   getAttachCommand(id: string): string[] {
-    return ["tmux", "attach-session", "-t", this.getSessionName(id)]
+    // -q suppresses informational client messages like
+    // "[detached (from session ...)]" when leaving tmux.
+    return ["tmux", "-q", "attach-session", "-t", this.getSessionName(id)]
   }
 
   async resize(id: string, cols: number, rows: number): Promise<void> {

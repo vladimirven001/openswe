@@ -19,4 +19,6 @@ export type {
 	ProviderBranding,
 	ParserPatterns,
 	SpawnCommand,
+	ProviderSessionRef,
+	ProviderSessionCaptureInput,
 } from "./types"

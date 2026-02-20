@@ -32,6 +32,16 @@ export interface Provider {
 	readonly parserPatterns: ParserPatterns
 
 	/**
+	 * Validate a provider session ID format
+	 */
+	isValidSessionId(sessionId: string): boolean
+
+	/**
+	 * Resolve the session ID to use when resuming
+	 */
+	getResumeSessionId(session: Session, explicitResumeSessionId?: string): string | undefined
+
+	/**
 	 * Build the spawn command for starting an AI session
 	 * @param session - Session to start
 	 * @param prompt - Optional prompt to send to the AI (omit for interactive mode)
@@ -56,6 +66,28 @@ export interface Provider {
 	 * @returns Version string or null if not installed
 	 */
 	getVersion(): Promise<string | null>
+
+	/**
+	 * Optional provider-specific session listing for capture fallback
+	 */
+	listSessions?(): Promise<ProviderSessionRef[] | null>
+
+	/**
+	 * Optional provider-specific session ID capture fallback
+	 */
+	captureSessionId?(input: ProviderSessionCaptureInput): Promise<string | null>
+}
+
+export interface ProviderSessionRef {
+	id: string
+	title?: string
+}
+
+export interface ProviderSessionCaptureInput {
+	session: Session
+	sessionTitle: string
+	startedAt: number
+	baselineSessionIds?: Set<string>
 }
 
 // ============================================================================

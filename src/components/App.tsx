@@ -355,6 +355,13 @@ export function App(props: AppProps) {
             // Re-fetch session to get updated status after start
             const updatedSession = getSession(session.id)
             if (updatedSession?.status === "active") {
+              const isRunning = await sessionManager.isSessionRunning(session.id)
+              if (!isRunning) {
+                logger.warn("Session became inactive before attach", { sessionId: session.id })
+                loadSessions()
+                return
+              }
+
               // Resize to full terminal size for interactive use
               await sessionManager.resizeSession(session.id, termSize().cols, termSize().rows)
 

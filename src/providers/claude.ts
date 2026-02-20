@@ -40,8 +40,25 @@ export const claudeProvider: Provider = {
 	branding,
 	parserPatterns,
 
+	isValidSessionId(sessionId: string): boolean {
+		return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)
+	},
+
+	getResumeSessionId(session: Session, explicitResumeSessionId?: string): string | undefined {
+		if (explicitResumeSessionId && this.isValidSessionId(explicitResumeSessionId)) {
+			return explicitResumeSessionId
+		}
+
+		const stored = session.aiSessionData?.sessionId
+		if (stored && this.isValidSessionId(stored)) {
+			return stored
+		}
+
+		return undefined
+	},
+
 	buildSpawnCommand(
-		session: Session,
+		_session: Session,
 		prompt?: string,
 		resumeSessionId?: string,
 		_options?: SpawnCommandOptions
@@ -52,8 +69,6 @@ export const claudeProvider: Provider = {
 
 		if (resumeSessionId) {
 			args.push("--resume", resumeSessionId)
-		} else if (session.aiSessionData?.sessionId) {
-			args.push("--session-id", session.aiSessionData.sessionId)
 		}
 
 		// Add the prompt as the final argument (omit for interactive mode)
