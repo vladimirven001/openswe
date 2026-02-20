@@ -8,7 +8,7 @@ import { homedir } from "os"
 import path from "path"
 import { Glob } from "bun"
 import type { ThemeJson } from "./types"
-import { logger } from "@/utils/logger"
+import { logger } from "../utils/logger"
 
 // ============================================================================
 // Custom Theme Directory
