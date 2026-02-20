@@ -75,7 +75,7 @@ src/
 ```typescript
 import { homedir } from "os"
 import { parse as parseToml } from "@iarna/toml"
-import type { GlobalConfig } from "@/config/types"
+import type { GlobalConfig } from "./config/types"
 import { logger } from "./logger"
 ```
 
