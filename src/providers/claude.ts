@@ -17,6 +17,7 @@ const branding: ProviderBranding = {
 	accentColor: "#cc785c",
 	secondaryColor: "#a65f48",
 	logoText: "CC",
+	installationUrl: "https://docs.anthropic.com/claude-code",
 }
 
 // ============================================================================
@@ -84,7 +85,7 @@ export const claudeProvider: Provider = {
 
 	async validateInstallation(): Promise<boolean> {
 		try {
-			const proc = Bun.spawn(["which", "claude"], {
+			const proc = Bun.spawn(["claude", "--version"], {
 				stdout: "pipe",
 				stderr: "pipe",
 			})

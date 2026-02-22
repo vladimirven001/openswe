@@ -7,7 +7,7 @@
 
 import {
   promptRepoInput,
-  promptAiBackend,
+  promptAiBackendWithValidation,
   promptAdoptRepo,
   promptFetchIssues,
   isCancelled,
@@ -356,7 +356,7 @@ interface ConfigurationResult {
  */
 async function gatherConfiguration(): Promise<ConfigurationResult> {
   // AI backend
-  const backend = await promptAiBackend()
+  const backend = await promptAiBackendWithValidation()
   if (isCancelled(backend)) {
     return { cancelled: true }
   }

@@ -72,14 +72,14 @@ export async function checkPrerequisites(): Promise<PrerequisiteResult> {
 }
 
 /**
- * Check if a command is available in PATH
+ * Check if a command is available by running --version
  *
  * @param command - Command name to check
- * @returns True if command is available
+ * @returns True if command is available and runs successfully
  */
 async function isCommandAvailable(command: string): Promise<boolean> {
   try {
-    const proc = Bun.spawn(["which", command], {
+    const proc = Bun.spawn([command, "--version"], {
       stdout: "pipe",
       stderr: "pipe",
     })
