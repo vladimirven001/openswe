@@ -4,7 +4,6 @@
  * Verifies required tools are installed before starting the TUI.
  */
 
-import { which } from "bun"
 import { checkGitInstalled } from "../git"
 import { checkGhCli } from "../github"
 
@@ -58,7 +57,7 @@ export async function checkPrerequisites(): Promise<PrerequisiteResult> {
   }
 
   // Check if opencode is available (warning only, not required for all operations)
-  const opencodeAvailable = isCommandAvailable("opencode")
+  const opencodeAvailable = await isCommandAvailable("opencode")
   if (!opencodeAvailable) {
     warnings.push(
       "opencode command not found in PATH. Sessions won't be able to start until it's installed."
@@ -73,13 +72,22 @@ export async function checkPrerequisites(): Promise<PrerequisiteResult> {
 }
 
 /**
- * Check if a command is available in PATH
+ * Check if a command is available by running --version
  *
  * @param command - Command name to check
- * @returns True if command is available
+ * @returns True if command is available and runs successfully
  */
-function isCommandAvailable(command: string): boolean {
-  return which(command) !== null
+async function isCommandAvailable(command: string): Promise<boolean> {
+  try {
+    const proc = Bun.spawn([command, "--version"], {
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    const exitCode = await proc.exited
+    return exitCode === 0
+  } catch {
+    return false
+  }
 }
 
 /**

@@ -4,7 +4,6 @@
  * Supports the OpenCode CLI (https://github.com/anomalyco/opencode)
  */
 
-import { which } from "bun"
 import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 
@@ -122,7 +121,16 @@ export const openCodeProvider: Provider = {
 	},
 
 	async validateInstallation(): Promise<boolean> {
-		return which("opencode") !== null
+		try {
+			const proc = Bun.spawn(["opencode", "--version"], {
+				stdout: "pipe",
+				stderr: "pipe",
+			})
+			const exitCode = await proc.exited
+			return exitCode === 0
+		} catch {
+			return false
+		}
 	},
 
 	async getVersion(): Promise<string | null> {

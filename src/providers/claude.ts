@@ -4,7 +4,6 @@
  * Supports the Claude CLI (https://docs.anthropic.com/claude-code)
  */
 
-import { which } from "bun"
 import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 
@@ -85,7 +84,16 @@ export const claudeProvider: Provider = {
 	},
 
 	async validateInstallation(): Promise<boolean> {
-		return which("claude") !== null
+		try {
+			const proc = Bun.spawn(["claude", "--version"], {
+				stdout: "pipe",
+				stderr: "pipe",
+			})
+			const exitCode = await proc.exited
+			return exitCode === 0
+		} catch {
+			return false
+		}
 	},
 
 	async getVersion(): Promise<string | null> {

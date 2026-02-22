@@ -4,7 +4,6 @@
  * Supports the Codex CLI (https://github.com/openai/codex)
  */
 
-import { which } from "bun"
 import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 import { homedir } from "os"
@@ -186,7 +185,16 @@ export const codexProvider: Provider = {
 	},
 
 	async validateInstallation(): Promise<boolean> {
-		return which("codex") !== null
+		try {
+			const proc = Bun.spawn(["codex", "--version"], {
+				stdout: "pipe",
+				stderr: "pipe",
+			})
+			const exitCode = await proc.exited
+			return exitCode === 0
+		} catch {
+			return false
+		}
 	},
 
 	async getVersion(): Promise<string | null> {
