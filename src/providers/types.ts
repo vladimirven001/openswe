@@ -122,6 +122,8 @@ export interface ProviderBranding {
 	logoText?: string
 	/** Optional terminal output background color (undefined = transparent) */
 	terminalBackground?: string
+	/** URL for installation instructions */
+	installationUrl?: string
 }
 
 // ============================================================================

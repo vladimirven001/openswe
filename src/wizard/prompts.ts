@@ -6,6 +6,7 @@
 
 import * as p from "@clack/prompts"
 import { isValidOwnerRepo } from "../git/repo"
+import { getProvider } from "../providers"
 
 // ============================================================================
 // Types
@@ -75,6 +76,27 @@ export async function promptAiBackend(): Promise<AIBackendChoice | symbol> {
   })
 
   return backend
+}
+
+export async function promptAiBackendWithValidation(): Promise<AIBackendChoice | symbol> {
+  while (true) {
+    const backend = await promptAiBackend()
+    if (isCancelled(backend)) {
+      return backend
+    }
+
+    const provider = getProvider(backend as AIBackendChoice)
+    const isInstalled = await provider.validateInstallation()
+
+    if (isInstalled) {
+      return backend
+    }
+
+    const installUrl = provider.branding.installationUrl ?? "the official documentation"
+    p.log.error(`${provider.branding.displayName} is not installed.`)
+    p.log.info(`Please install it from: ${installUrl}`)
+    p.log.message("")
+  }
 }
 
 // ============================================================================

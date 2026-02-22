@@ -4,6 +4,7 @@
  * Supports the Claude CLI (https://docs.anthropic.com/claude-code)
  */
 
+import { which } from "bun"
 import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 
@@ -17,6 +18,7 @@ const branding: ProviderBranding = {
 	accentColor: "#cc785c",
 	secondaryColor: "#a65f48",
 	logoText: "CC",
+	installationUrl: "https://docs.anthropic.com/claude-code",
 }
 
 // ============================================================================
@@ -83,16 +85,7 @@ export const claudeProvider: Provider = {
 	},
 
 	async validateInstallation(): Promise<boolean> {
-		try {
-			const proc = Bun.spawn(["which", "claude"], {
-				stdout: "pipe",
-				stderr: "pipe",
-			})
-			const exitCode = await proc.exited
-			return exitCode === 0
-		} catch {
-			return false
-		}
+		return which("claude") !== null
 	},
 
 	async getVersion(): Promise<string | null> {

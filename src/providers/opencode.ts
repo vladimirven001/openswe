@@ -1,9 +1,10 @@
 /**
  * OpenCode provider implementation
  *
- * Supports the OpenCode CLI (https://github.com/opencode-ai/opencode)
+ * Supports the OpenCode CLI (https://github.com/anomalyco/opencode)
  */
 
+import { which } from "bun"
 import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 
@@ -42,6 +43,7 @@ const branding: ProviderBranding = {
 	secondaryColor: "#f1ecec",
 	logoText: "OC",
 	terminalBackground: "#000000",
+	installationUrl: "https://opencode.ai/install",
 }
 
 // ============================================================================
@@ -120,16 +122,7 @@ export const openCodeProvider: Provider = {
 	},
 
 	async validateInstallation(): Promise<boolean> {
-		try {
-			const proc = Bun.spawn(["which", "opencode"], {
-				stdout: "pipe",
-				stderr: "pipe",
-			})
-			const exitCode = await proc.exited
-			return exitCode === 0
-		} catch {
-			return false
-		}
+		return which("opencode") !== null
 	},
 
 	async getVersion(): Promise<string | null> {

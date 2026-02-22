@@ -4,6 +4,7 @@
  * Supports the Codex CLI (https://github.com/openai/codex)
  */
 
+import { which } from "bun"
 import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 import { homedir } from "os"
@@ -101,6 +102,7 @@ const branding: ProviderBranding = {
 	accentColor: "#8BE9FD",
 	secondaryColor: "#59DFFC",
 	logoText: "CX",
+	installationUrl: "https://github.com/openai/codex",
 }
 
 // ============================================================================
@@ -184,16 +186,7 @@ export const codexProvider: Provider = {
 	},
 
 	async validateInstallation(): Promise<boolean> {
-		try {
-			const proc = Bun.spawn(["which", "codex"], {
-				stdout: "pipe",
-				stderr: "pipe",
-			})
-			const exitCode = await proc.exited
-			return exitCode === 0
-		} catch {
-			return false
-		}
+		return which("codex") !== null
 	},
 
 	async getVersion(): Promise<string | null> {
