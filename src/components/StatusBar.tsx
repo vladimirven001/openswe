@@ -81,7 +81,7 @@ function HeaderBar(props: {
           <box
             onMouseDown={() => props.onWorktreeClick?.()}
           >
-            <text fg={colors().text.inverse} opacity={0.8}>
+            <text fg={colors().text.inverse} opacity={0.8} selectable={false}>
               {iconPrefix()}{props.worktreeCommand}
             </text>
           </box>
