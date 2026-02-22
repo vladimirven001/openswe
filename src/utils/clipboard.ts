@@ -4,7 +4,7 @@
  * Supports:
  * - macOS: pbcopy
  * - Windows: clip
- * - Linux: wl-copy (Wayland), xclip, xsel, clip (WSL)
+ * - Linux: wl-copy (Wayland), xclip, xsel
  */
 
 export type ClipboardResult = { success: true } | { success: false; error: string }
@@ -33,8 +33,7 @@ async function detectLinuxClipboardTool(): Promise<string | null> {
  * For xclip/xsel, uses the clipboard selection (not primary).
  *
  * @param text - Text to copy to clipboard
- * @returns Promise resolving to success or error result
- * @throws {Error} If the clipboard command fails
+ * @returns Promise resolving to success or error result: { success: true } or { success: false; error: string }
  */
 export async function copyToClipboard(text: string): Promise<ClipboardResult> {
   const platform = process.platform
@@ -57,10 +56,6 @@ export async function copyToClipboard(text: string): Promise<ClipboardResult> {
     }
     default:
       return { success: false, error: `Unsupported platform: ${platform}` }
-  }
-
-  if (!command) {
-    return { success: false, error: "Could not determine clipboard command" }
   }
 
   try {
