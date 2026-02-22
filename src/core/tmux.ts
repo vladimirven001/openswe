@@ -103,7 +103,7 @@ export class TmuxManager implements ProcessManager {
     const pipeProc = Bun.spawn([
       "tmux", "pipe-pane",
       "-o",
-      "-t", sessionName,
+      "-t", `${sessionName}:0.0`,
       `cat >> '${escapedLogPath}'`  // Use append mode and single quotes for safety
     ], { stderr: "pipe" })
 
@@ -128,7 +128,7 @@ export class TmuxManager implements ProcessManager {
     }
 
     // 2.5 Disable status bar to reclaim vertical space
-    await Bun.spawn(["tmux", "set-option", "-t", sessionName, "status", "off"], { stderr: "ignore" }).exited
+    await Bun.spawn(["tmux", "set-option", "-t", `${sessionName}:0`, "status", "off"], { stderr: "ignore" }).exited
 
     // 3. Get PID of the process inside tmux (approximate)
     // tmux list-panes -t session -F "#{pane_pid}"
@@ -166,7 +166,7 @@ export class TmuxManager implements ProcessManager {
     // capture-pane -p (print) -e (include escape sequences for colored preview)
     // The Preview component uses ansi-parser to render colored output
 
-    const proc = Bun.spawn(["tmux", "capture-pane", "-pet", sessionName], { stdout: "pipe", stderr: "pipe" })
+    const proc = Bun.spawn(["tmux", "capture-pane", "-pet", `${sessionName}:0.0`], { stdout: "pipe", stderr: "pipe" })
     const exitCode = await proc.exited
 
     if (exitCode !== 0) {
@@ -192,7 +192,7 @@ export class TmuxManager implements ProcessManager {
     const sessionName = this.getSessionName(id)
     // send-keys is mainly for strings. For control chars it's trickier.
     // simpler approach: just send keys.
-    await Bun.spawn(["tmux", "send-keys", "-t", sessionName, data]).exited
+    await Bun.spawn(["tmux", "send-keys", "-t", `${sessionName}:0.0`, data]).exited
   }
 
   async listActiveSessions(): Promise<string[]> {
@@ -223,20 +223,20 @@ export class TmuxManager implements ProcessManager {
   async resize(id: string, cols: number, rows: number): Promise<void> {
     const sessionName = this.getSessionName(id)
     // resize-window sets the size of the window (and thus the detached session)
-    await Bun.spawn(["tmux", "resize-window", "-t", sessionName, "-x", cols.toString(), "-y", rows.toString()], { stderr: "ignore" }).exited
+    await Bun.spawn(["tmux", "resize-window", "-t", `${sessionName}:0`, "-x", cols.toString(), "-y", rows.toString()], { stderr: "ignore" }).exited
   }
 
   async setWindowTitle(id: string, title: string): Promise<void> {
     const sessionName = this.getSessionName(id)
     // Disable automatic window renaming
     await Bun.spawn([
-      "tmux", "set-option", "-t", sessionName,
+      "tmux", "set-option", "-t", `${sessionName}:0`,
       "automatic-rename", "off"
     ], { stderr: "ignore" }).exited
 
     // Set the window title
     await Bun.spawn([
-      "tmux", "rename-window", "-t", sessionName, title
+      "tmux", "rename-window", "-t", `${sessionName}:0`, title
     ], { stderr: "ignore" }).exited
   }
 }
