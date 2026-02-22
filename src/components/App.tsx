@@ -37,6 +37,7 @@ import { deleteSessionWithWorktree } from "./session-utils"
 import { useColors } from "./theme"
 import { useTheme } from "../theme"
 import { logger } from "../utils/logger"
+import { copyToClipboard } from "../utils/clipboard"
 
 /** Refresh interval for polling data (24 fps) */
 const REFRESH_INTERVAL = (1/60) * 1000
@@ -64,6 +65,7 @@ export function App(props: AppProps) {
   const [activeModal, setActiveModal] = createSignal<ModalType>("none")
   const [pendingAction, setPendingAction] = createSignal<PendingAction | null>(null)
   const [isAttaching, setIsAttaching] = createSignal(false)
+  const [worktreeIcon, setWorktreeIcon] = createSignal<"default" | "success" | "error">("default")
 
   // Terminal size tracking
   const [termSize, setTermSize] = createSignal({ cols: process.stdout.columns, rows: process.stdout.rows })
@@ -431,6 +433,26 @@ export function App(props: AppProps) {
   }
 
   // ============================================================================
+  // Worktree Click Handler
+  // ============================================================================
+
+  const handleWorktreeClick = async () => {
+    const cmd = worktreeCommand()
+    if (!cmd) return
+
+    const result = await copyToClipboard(cmd)
+
+    if (result.success) {
+      setWorktreeIcon("success")
+    } else {
+      setWorktreeIcon("error")
+      logger.warn("Clipboard copy failed:", result.error)
+    }
+
+    setTimeout(() => setWorktreeIcon("default"), 1500)
+  }
+
+  // ============================================================================
   // Provider Change Handler
   // ============================================================================
 
@@ -481,6 +503,8 @@ export function App(props: AppProps) {
         backend={props.config.ai.backend}
         sessionId={selectedSession()?.id}
         worktreeCommand={worktreeCommand()}
+        worktreeIcon={worktreeIcon()}
+        onWorktreeClick={handleWorktreeClick}
         providerBranding={providerBranding()}
       />
 

@@ -23,6 +23,8 @@ export function StatusBar(props: StatusBarProps) {
         backend={props.backend}
         sessionId={props.sessionId}
         worktreeCommand={props.worktreeCommand}
+        worktreeIcon={props.worktreeIcon}
+        onWorktreeClick={props.onWorktreeClick}
         providerBranding={props.providerBranding}
       />
     </Show>
@@ -34,11 +36,24 @@ function HeaderBar(props: {
   backend?: string
   sessionId?: string
   worktreeCommand?: string
+  worktreeIcon?: "default" | "success" | "error"
+  onWorktreeClick?: () => void
   providerBranding?: ProviderBranding
 }) {
   const colors = useColors()
   const headerBg = () => props.providerBranding?.headerBackground ?? props.providerBranding?.accentColor ?? colors().accent.primary
   const backendDisplay = () => props.providerBranding?.displayName ?? props.backend
+
+  const iconPrefix = () => {
+    switch (props.worktreeIcon) {
+      case "success":
+        return "✓ "
+      case "error":
+        return "✗ "
+      default:
+        return ""
+    }
+  }
 
   return (
     <box
@@ -63,7 +78,13 @@ function HeaderBar(props: {
       {/* Center: Worktree command */}
       <box flexDirection="row" gap={1}>
         <Show when={props.worktreeCommand}>
-          <text fg={colors().text.inverse} opacity={0.8}>{props.worktreeCommand}</text>
+          <box
+            onMouseDown={() => props.onWorktreeClick?.()}
+          >
+            <text fg={colors().text.inverse} opacity={0.8} selectable={false}>
+              {iconPrefix()}{props.worktreeCommand}
+            </text>
+          </box>
         </Show>
       </box>
 
