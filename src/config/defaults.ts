@@ -1,5 +1,5 @@
 /**
- * Default configuration values for OpenSWE
+ * Default configuration values for openswe
  */
 
 import type { GlobalConfig } from "./types"

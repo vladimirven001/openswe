@@ -2,7 +2,7 @@
  * StatusBar component - displays header and footer bars
  *
  * Two variants:
- * - header: "OpenSWE | repo/name | [task badge] | [Backend]"
+ * - header: "openswe | repo/name | [task badge] | [Backend]"
  * - footer: Keybinding hints
  */
 
@@ -52,7 +52,7 @@ function HeaderBar(props: {
     >
       <box flexDirection="row" gap={1}>
         <text fg={colors().text.inverse} attributes={BOLD}>
-          OpenSWE
+          openswe
         </text>
         <Show when={props.repoName}>
           <text fg={colors().text.inverse}>|</text>

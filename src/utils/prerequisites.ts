@@ -1,5 +1,5 @@
 /**
- * Prerequisites checker for OpenSWE
+ * Prerequisites checker for openswe
  *
  * Verifies required tools are installed before starting the TUI.
  */
@@ -26,7 +26,7 @@ export interface PrerequisiteResult {
 // ============================================================================
 
 /**
- * Check all prerequisites for running OpenSWE
+ * Check all prerequisites for running openswe
  *
  * Verifies:
  * - Git is installed

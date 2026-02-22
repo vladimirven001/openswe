@@ -1,5 +1,5 @@
 /**
- * Theme module for OpenSWE
+ * Theme module for openswe
  *
  * Provides a complete theming system with 33+ bundled themes
  * and support for custom user themes.

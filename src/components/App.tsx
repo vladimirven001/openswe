@@ -1,5 +1,5 @@
 /**
- * App component - root component for OpenSWE TUI
+ * App component - root component for openswe TUI
  *
  * Manages:
  * - State signals for sessions, selection, project info

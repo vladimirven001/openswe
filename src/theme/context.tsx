@@ -1,5 +1,5 @@
 /**
- * Theme context for OpenSWE
+ * Theme context for openswe
  *
  * Provides reactive theme access throughout the TUI
  */

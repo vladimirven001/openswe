@@ -1,5 +1,5 @@
 /**
- * Theme configuration for OpenSWE TUI
+ * Theme configuration for openswe TUI
  *
  * Defines colors, border styles, and layout constants
  * Colors are derived from the theme system for consistency
