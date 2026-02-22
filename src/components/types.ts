@@ -88,6 +88,8 @@ export interface StatusBarProps {
   backend?: string
   sessionId?: string
   worktreeCommand?: string
+  worktreeIcon?: "default" | "success" | "error"
+  onWorktreeClick?: () => void
   providerBranding?: ProviderBranding
   // Footer variant props (keybinding hints)
 }
