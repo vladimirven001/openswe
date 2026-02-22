@@ -48,7 +48,8 @@ export async function startTUI(config: GlobalConfig, projectRoot: string) {
     stdin: process.stdin,
     stdout: process.stdout,
     useAlternateScreen: true,
-    useMouse: false,
+    useMouse: true,
+    enableMouseMovement: true,
     useKittyKeyboard:
       process.env.OPENTUI_KITTY === "1"
         ? {
