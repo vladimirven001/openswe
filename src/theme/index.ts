@@ -7,14 +7,14 @@
  * @example
  * ```tsx
  * // In app root
- * import { ThemeProvider } from "./index"
+ * import { ThemeProvider } from "@/theme"
  *
  * <ThemeProvider initialTheme="tokyonight">
  *   <App />
  * </ThemeProvider>
  *
  * // In components
- * import { useTheme } from "./index"
+ * import { useTheme } from "@/theme"
  *
  * const { theme, themeName, setTheme } = useTheme()
  * console.log(theme().primary)  // "#7aa2f7"

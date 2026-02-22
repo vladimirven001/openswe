@@ -69,14 +69,13 @@ src/
 ### Imports (in order)
 1. Node.js/Bun built-ins (`os`, `path`, `fs/promises`)
 2. External packages (`yargs`, `@iarna/toml`)
-3. Internal with path alias (`@/*` for `src/*`)
-4. Relative imports (`./`, `../`)
+3. Relative imports (`./`, `../`)
 
 ```typescript
 import { homedir } from "os"
 import { parse as parseToml } from "@iarna/toml"
 import type { GlobalConfig } from "./config/types"
-import { logger } from "./logger"
+import { logger } from "./utils/logger"
 ```
 
 ### Types
