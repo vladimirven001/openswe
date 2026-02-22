@@ -103,7 +103,7 @@ export class TmuxManager implements ProcessManager {
     const pipeProc = Bun.spawn([
       "tmux", "pipe-pane",
       "-o",
-      "-t", sessionName,
+      "-t", `${sessionName}:0.0`,
       `cat >> '${escapedLogPath}'`  // Use append mode and single quotes for safety
     ], { stderr: "pipe" })
 
@@ -166,7 +166,7 @@ export class TmuxManager implements ProcessManager {
     // capture-pane -p (print) -e (include escape sequences for colored preview)
     // The Preview component uses ansi-parser to render colored output
 
-    const proc = Bun.spawn(["tmux", "capture-pane", "-pet", sessionName], { stdout: "pipe", stderr: "pipe" })
+    const proc = Bun.spawn(["tmux", "capture-pane", "-pet", `${sessionName}:0.0`], { stdout: "pipe", stderr: "pipe" })
     const exitCode = await proc.exited
 
     if (exitCode !== 0) {
@@ -192,7 +192,7 @@ export class TmuxManager implements ProcessManager {
     const sessionName = this.getSessionName(id)
     // send-keys is mainly for strings. For control chars it's trickier.
     // simpler approach: just send keys.
-    await Bun.spawn(["tmux", "send-keys", "-t", sessionName, data]).exited
+    await Bun.spawn(["tmux", "send-keys", "-t", `${sessionName}:0.0`, data]).exited
   }
 
   async listActiveSessions(): Promise<string[]> {
