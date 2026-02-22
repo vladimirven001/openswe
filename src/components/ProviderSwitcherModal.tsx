@@ -2,9 +2,10 @@
  * ProviderSwitcherModal component - Allows switching AI backends
  *
  * Displays a list of available AI providers and lets the user select one.
+ * Validates installation before allowing selection.
  */
 
-import { createSignal, onMount, For } from "solid-js"
+import { createSignal, onMount, For, Show } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import type { ProviderSwitcherModalProps } from "./types"
 import { getAllProviders, type Provider } from "../providers"
@@ -18,6 +19,7 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
   const colors = useColors()
   const [providers, setProviders] = createSignal<Provider[]>([])
   const [focusedIndex, setFocusedIndex] = createSignal(0)
+  const [errorMessage, setErrorMessage] = createSignal<string | null>(null)
 
   onMount(() => {
     const all = getAllProviders()
@@ -29,6 +31,18 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
       setFocusedIndex(idx)
     }
   })
+
+  const handleSelect = async (provider: Provider) => {
+    setErrorMessage(null)
+    
+    const isInstalled = await provider.validateInstallation()
+    if (!isInstalled) {
+      setErrorMessage(`${provider.branding.displayName} is not installed`)
+      return
+    }
+
+    props.onSelect(provider.id)
+  }
 
   useKeyboard((event) => {
     const list = providers()
@@ -43,6 +57,7 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
         setFocusedIndex(prev => 
           Math.min(prev + 1, list.length - 1)
         )
+        setErrorMessage(null)
         break
         
       case "k":
@@ -50,13 +65,14 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
         setFocusedIndex(prev => 
           Math.max(prev - 1, 0)
         )
+        setErrorMessage(null)
         break
         
       case "enter":
       case "return": {
         const selected = list[focusedIndex()]
         if (selected) {
-          props.onSelect(selected.id)
+          handleSelect(selected)
         }
         break
       }
@@ -141,6 +157,20 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
             }}
           </For>
         </box>
+
+        {/* Error Message */}
+        <Show when={errorMessage()}>
+          <box 
+            height={1} 
+            paddingLeft={2} 
+            paddingRight={2}
+            backgroundColor="#772222"
+          >
+            <text fg={colors().accent.error}>
+              {errorMessage()}
+            </text>
+          </box>
+        </Show>
 
         {/* Footer */}
         <Footer 

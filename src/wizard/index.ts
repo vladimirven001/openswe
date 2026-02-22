@@ -9,6 +9,7 @@ export {
   // Prompt functions
   promptRepoInput,
   promptAiBackend,
+  promptAiBackendWithValidation,
   promptAdoptRepo,
   // Utility functions
   isCancelled,

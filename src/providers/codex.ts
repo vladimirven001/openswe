@@ -101,6 +101,7 @@ const branding: ProviderBranding = {
 	accentColor: "#8BE9FD",
 	secondaryColor: "#59DFFC",
 	logoText: "CX",
+	installationUrl: "https://github.com/openai/codex",
 }
 
 // ============================================================================
@@ -185,7 +186,7 @@ export const codexProvider: Provider = {
 
 	async validateInstallation(): Promise<boolean> {
 		try {
-			const proc = Bun.spawn(["which", "codex"], {
+			const proc = Bun.spawn(["codex", "--version"], {
 				stdout: "pipe",
 				stderr: "pipe",
 			})
