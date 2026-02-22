@@ -4,13 +4,13 @@
  * Supports:
  * - macOS: pbcopy
  * - Windows: clip
- * - Linux: wl-paste (Wayland), xclip, xsel, clip (WSL)
+ * - Linux: wl-copy (Wayland), xclip, xsel, clip (WSL)
  */
 
 export type ClipboardResult = { success: true } | { success: false; error: string }
 
 async function detectLinuxClipboardTool(): Promise<string | null> {
-  const tools = ["wl-paste", "xclip", "xsel"]
+  const tools = ["wl-copy", "xclip", "xsel"]
 
   for (const tool of tools) {
     const which = Bun.spawnSync(["which", tool])
@@ -22,6 +22,20 @@ async function detectLinuxClipboardTool(): Promise<string | null> {
   return null
 }
 
+/**
+ * Copy text to the system clipboard
+ *
+ * Handles OS detection and uses appropriate tools:
+ * - macOS: pbcopy
+ * - Windows: clip
+ * - Linux: wl-copy (Wayland), xclip, or xsel
+ *
+ * For xclip/xsel, uses the clipboard selection (not primary).
+ *
+ * @param text - Text to copy to clipboard
+ * @returns Promise resolving to success or error result
+ * @throws {Error} If the clipboard command fails
+ */
 export async function copyToClipboard(text: string): Promise<ClipboardResult> {
   const platform = process.platform
 
@@ -37,7 +51,7 @@ export async function copyToClipboard(text: string): Promise<ClipboardResult> {
     case "linux": {
       command = await detectLinuxClipboardTool()
       if (!command) {
-        return { success: false, error: "No clipboard tool found (tried wl-paste, xclip, xsel)" }
+        return { success: false, error: "No clipboard tool found (tried wl-copy, xclip, xsel)" }
       }
       break
     }
@@ -50,8 +64,14 @@ export async function copyToClipboard(text: string): Promise<ClipboardResult> {
   }
 
   try {
+    const cmd: string[] = command === "xclip"
+      ? ["xclip", "-selection", "clipboard"]
+      : command === "xsel"
+        ? ["xsel", "--clipboard", "--input"]
+        : [command]
+
     const proc = Bun.spawn({
-      cmd: [command],
+      cmd,
       stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",
