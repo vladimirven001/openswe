@@ -9,7 +9,7 @@ import { createWorktree, removeWorktree, worktreeExists } from "../git"
 import { createSession, deleteSession, getSession } from "../store"
 import { getWorktreePath, generateBranchName, sanitizeWorktreeName } from "../workspace/paths"
 import type { GitHubIssue } from "../github"
-import type { Session, AISessionData } from "../store"
+import type { Session, AISessionData, TicketProviderType } from "../store"
 import { logger } from "../utils/logger"
 import { existsSync } from "fs"
 
@@ -35,6 +35,11 @@ export interface CreateSessionOptions {
 	 * Initial AI session data (e.g. backend provider)
 	 */
 	aiSessionData?: AISessionData
+
+	/**
+	 * Ticket provider used to fetch this issue
+	 */
+	ticketProvider?: TicketProviderType
 }
 
 export enum OverwriteWorktreeChoice {
@@ -172,6 +177,7 @@ export async function createSessionFromIssue(
 			issueTitle: issue.title,
 			issueBody: issue.body ?? undefined,
 			issueUrl: issue.url,
+			ticketProvider: options.ticketProvider ?? "github",
 			worktreePath,
 			branchName,
 			aiSessionData: options.aiSessionData,

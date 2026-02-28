@@ -12,6 +12,7 @@
 export type {
   Phase,
   Status,
+  TicketProviderType,
   AISessionData,
   Session,
   CreateSessionInput,
@@ -54,6 +55,7 @@ export {
   getProject,
   createProject,
   updateLastOpened,
+  updateProjectTicketProvider,
   projectExists,
   deleteProject,
 } from "./project"
@@ -69,6 +71,7 @@ export {
   getSessionsByPhase,
   getActiveSessionCount,
   getSessionCount,
+  getSessionCountByTicketProvider,
   createSession,
   updateSession,
   updateSessionPhase,
@@ -80,6 +83,7 @@ export {
   getAISessionData,
   resetSessionForReload,
   deleteSession,
+  deleteSessionsByTicketProvider,
   deleteAllSessions,
 } from "./sessions"
 

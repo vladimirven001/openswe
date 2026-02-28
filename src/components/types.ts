@@ -2,7 +2,7 @@
  * Component type definitions for OpenSWE TUI
  */
 
-import type { Session, Phase, Status, ProjectState } from "../store"
+import type { Session, Phase, Status, ProjectState, TicketProviderType } from "../store"
 import type { GlobalConfig, AIBackend } from "../config"
 import type { ProviderBranding } from "../providers"
 import type { SessionManager } from "../core/session"
@@ -121,6 +121,8 @@ export interface IssueSelectorModalProps {
   projectRoot: string
   /** Current AI backend */
   currentBackend: AIBackend
+  /** Ticket provider type */
+  ticketProvider: TicketProviderType
   /** Callback when modal is closed */
   onClose: () => void
   /** Callback when sessions are created - receives created sessions for auto-start */
@@ -184,6 +186,7 @@ export interface PendingAction {
 export interface ProjectInfo {
   repoFullName: string
   repoUrl: string
+  ticketProvider: TicketProviderType
 }
 
 // ============================================================================

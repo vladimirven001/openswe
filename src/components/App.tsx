@@ -133,6 +133,7 @@ export function App(props: AppProps) {
         setProjectInfo({
           repoFullName: project.repoFullName,
           repoUrl: project.repoUrl,
+          ticketProvider: project.ticketProvider,
         })
         logger.debug("Loaded project info", project)
       } else {
@@ -557,6 +558,7 @@ export function App(props: AppProps) {
           ownerRepo={projectInfo()!.repoFullName}
           projectRoot={props.projectRoot}
           currentBackend={props.config.ai.backend}
+          ticketProvider={projectInfo()!.ticketProvider}
           onClose={() => setActiveModal("none")}
           onSessionsCreated={async (sessions) => {
             // Auto-start all created sessions

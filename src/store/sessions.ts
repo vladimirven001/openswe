@@ -12,6 +12,7 @@ import type {
   UpdateSessionInput,
   Phase,
   Status,
+  TicketProviderType,
   AISessionData,
 } from "./types"
 import { isValidAISessionData } from "./types"
@@ -29,6 +30,7 @@ interface SessionRow {
   issue_title: string | null
   issue_body: string | null
   issue_url: string | null
+  ticket_provider: string
   worktree_path: string
   branch_name: string
   phase: string
@@ -57,6 +59,7 @@ function rowToSession(row: SessionRow): Session {
     issueTitle: row.issue_title,
     issueBody: row.issue_body,
     issueUrl: row.issue_url,
+    ticketProvider: row.ticket_provider as TicketProviderType,
     worktreePath: row.worktree_path,
     branchName: row.branch_name,
     phase: row.phase as Phase,
@@ -194,21 +197,23 @@ export function createSession(data: CreateSessionInput): Session {
   const id = generateId()
   const now = nowISO()
   const aiSessionData = serializeAISessionData(data.aiSessionData ?? null)
+  const ticketProvider = data.ticketProvider ?? "github"
 
   logger.debug("Creating session", {
     id,
     name: data.name,
     issueNumber: data.issueNumber ?? null,
+    ticketProvider,
     worktreePath: data.worktreePath,
   })
 
   db.query(
     `INSERT INTO sessions (
-      id, name, issue_number, issue_title, issue_body, issue_url,
+      id, name, issue_number, issue_title, issue_body, issue_url, ticket_provider,
       worktree_path, branch_name, phase, status,
       attention_reason, retry_count, tokens_used, pid, ai_session_data,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'queued', NULL, 0, 0, NULL, ?, ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'queued', NULL, 0, 0, NULL, ?, ?, ?)`
   ).run(
     id,
     data.name,
@@ -216,6 +221,7 @@ export function createSession(data: CreateSessionInput): Session {
     data.issueTitle ?? null,
     data.issueBody ?? null,
     data.issueUrl ?? null,
+    ticketProvider,
     data.worktreePath,
     data.branchName,
     aiSessionData,
@@ -232,6 +238,7 @@ export function createSession(data: CreateSessionInput): Session {
     issueTitle: data.issueTitle ?? null,
     issueBody: data.issueBody ?? null,
     issueUrl: data.issueUrl ?? null,
+    ticketProvider,
     worktreePath: data.worktreePath,
     branchName: data.branchName,
     phase: "pending",
@@ -472,6 +479,35 @@ export function resetSessionForReload(id: string): void {
 export function deleteSession(id: string): void {
   const db = getDatabase()
   db.query("DELETE FROM sessions WHERE id = ?").run(id)
+}
+
+/**
+ * Delete sessions with a specific ticket provider
+ *
+ * Useful when switching ticket providers during reconfiguration.
+ *
+ * @param provider - Ticket provider type
+ * @returns Number of sessions deleted
+ */
+export function deleteSessionsByTicketProvider(provider: TicketProviderType): number {
+  const count = getSessionCountByTicketProvider(provider)
+  const db = getDatabase()
+  db.query("DELETE FROM sessions WHERE ticket_provider = ?").run(provider)
+  return count
+}
+
+/**
+ * Get count of sessions with a specific ticket provider
+ *
+ * @param provider - Ticket provider type
+ * @returns Number of sessions with that provider
+ */
+export function getSessionCountByTicketProvider(provider: TicketProviderType): number {
+  const db = getDatabase()
+  const row = db.query<{ count: number }, [string]>(
+    "SELECT COUNT(*) as count FROM sessions WHERE ticket_provider = ?"
+  ).get(provider)
+  return row?.count ?? 0
 }
 
 /**
