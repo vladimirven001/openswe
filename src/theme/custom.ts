@@ -1,5 +1,5 @@
 /**
- * Custom theme loader for OpenSWE
+ * Custom theme loader for openswe
  *
  * Loads user-defined themes from ~/.config/openswe/themes/
  */

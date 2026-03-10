@@ -1,5 +1,5 @@
 /**
- * Configuration type definitions for OpenSWE
+ * Configuration type definitions for openswe
  */
 
 // ============================================================================

@@ -89,7 +89,7 @@ describe("codexProvider", () => {
 	// ============================================================================
 
 	describe("session ID lifecycle", () => {
-		test("rejects OpenSWE tmux session names", () => {
+		test("rejects openswe tmux session names", () => {
 			expect(codexProvider.isValidSessionId("openswe-abc123")).toBe(false)
 			expect(codexProvider.isValidSessionId("session_abc123")).toBe(true)
 		})

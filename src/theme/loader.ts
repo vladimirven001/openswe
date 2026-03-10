@@ -1,5 +1,5 @@
 /**
- * Theme loader for OpenSWE
+ * Theme loader for openswe
  *
  * Loads bundled themes and resolves color references
  */

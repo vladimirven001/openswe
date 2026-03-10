@@ -8,7 +8,7 @@
  */
 
 import { dirname, join, resolve } from "path"
-import { getOpenSWEDir } from "./paths"
+import { getOpensweDir } from "./paths"
 
 // ============================================================================
 // Types
@@ -37,11 +37,11 @@ export interface WorkspaceResult {
 // ============================================================================
 
 /**
- * Check if a directory contains an OpenSWE project
+ * Check if a directory contains an openswe project
  * @param path - Directory path to check
  */
-export async function hasOpenSWEProject(path: string): Promise<boolean> {
-  const opensweDir = getOpenSWEDir(path)
+export async function hasOpensweProject(path: string): Promise<boolean> {
+  const opensweDir = getOpensweDir(path)
   // Try to check if it's a directory by checking if state.db exists
   // or if the directory marker exists
   try {
@@ -156,8 +156,8 @@ export async function detectWorkspace(cwd: string): Promise<WorkspaceResult> {
   let current = resolve(cwd)
 
   while (true) {
-    // Prefer OpenSWE project if found at this level
-    if (await hasOpenSWEProject(current)) {
+    // Prefer openswe project if found at this level
+    if (await hasOpensweProject(current)) {
       return {
         type: "existing-project",
         projectRoot: current,

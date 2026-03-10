@@ -1,5 +1,5 @@
 /**
- * Database type definitions for OpenSWE
+ * Database type definitions for openswe
  *
  * Defines types for sessions, human tasks, project state, and output buffers
  * stored in the SQLite database.

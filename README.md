@@ -54,7 +54,7 @@ openswe --repo owner/repo
 
 ## How It Works
 
-OpenSWE detects your current context to determine how to proceed:
+openswe detects your current context to determine how to proceed:
 
 1.  **Existing Project**: If run in a folder with `.openswe/`, it loads the existing project state.
 2.  **Git Repo**: If run in a Git repository, it offers to adopt it.

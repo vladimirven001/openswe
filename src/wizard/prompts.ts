@@ -111,7 +111,7 @@ export async function promptAiBackendWithValidation(): Promise<AIBackendChoice |
  */
 export async function promptAdoptRepo(repoName: string): Promise<boolean | symbol> {
   const adopt = await p.confirm({
-    message: `Initialize OpenSWE for ${repoName}?`,
+    message: `Initialize openswe for ${repoName}?`,
     initialValue: true,
   })
 

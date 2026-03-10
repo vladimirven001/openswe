@@ -25,7 +25,7 @@ function parseBoolean(val: string): boolean | undefined {
  */
 function warnInvalidEnv(varName: string, value: string, expected: string): void {
   console.warn(
-    `[OpenSWE] Invalid value for ${varName}="${value}". Expected ${expected}. Using default.`
+    `[openswe] Invalid value for ${varName}="${value}". Expected ${expected}. Using default.`
   )
 }
 

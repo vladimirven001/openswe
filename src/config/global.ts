@@ -189,7 +189,7 @@ function validateParsedConfig(parsed: unknown): PartialConfig {
  */
 function warnInvalidConfig(path: string, value: unknown, expected: string): void {
   console.warn(
-    `[OpenSWE] Invalid config value at "${path}": ${JSON.stringify(value)}. Expected ${expected}. Using default.`
+    `[openswe] Invalid config value at "${path}": ${JSON.stringify(value)}. Expected ${expected}. Using default.`
   )
 }
 
@@ -220,9 +220,9 @@ export async function loadGlobalConfig(): Promise<PartialConfig> {
     return validateParsedConfig(transformed)
   } catch (err) {
     if (err instanceof Error) {
-      console.warn(`[OpenSWE] Failed to load config from ${configPath}: ${err.message}`)
+      console.warn(`[openswe] Failed to load config from ${configPath}: ${err.message}`)
     } else {
-      console.warn(`[OpenSWE] Failed to load config from ${configPath}`)
+      console.warn(`[openswe] Failed to load config from ${configPath}`)
     }
     return {}
   }
