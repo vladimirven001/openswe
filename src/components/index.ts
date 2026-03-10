@@ -19,7 +19,6 @@ export { ConfirmDialog } from "./ConfirmDialog"
 export { ManualSessionModal } from "./ManualSessionModal"
 export { ProviderSwitcherModal } from "./ProviderSwitcherModal"
 export { ThemeSwitcherModal } from "./ThemeSwitcherModal"
-export { SessionTerminal } from "./SessionTerminal"
 export { ScrollableText } from "./ScrollableText"
 
 // ============================================================================

@@ -4,7 +4,7 @@
  * Supports the OpenCode CLI (https://github.com/anomalyco/opencode)
  */
 
-import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
+import type { Provider, ProviderBranding, ProviderInputCapabilities, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 
 function parseOpenCodeSessionList(output: string): Array<{ id: string; title: string }> {
@@ -45,6 +45,14 @@ const branding: ProviderBranding = {
 	installationUrl: "https://opencode.ai/install",
 }
 
+const inputCapabilities: ProviderInputCapabilities = {
+	submitKeys: ["Enter"],
+	newlineKeys: ["Shift+Enter", "Ctrl+Enter", "Alt+Enter", "Ctrl+J"],
+	tmuxNotes: [
+		"Some terminals require explicit Shift+Enter support for multiline input.",
+	],
+}
+
 // ============================================================================
 // Parser Patterns
 // ============================================================================
@@ -63,6 +71,7 @@ export const openCodeProvider: Provider = {
 	id: "opencode",
 	name: "OpenCode",
 	branding,
+	inputCapabilities,
 	parserPatterns,
 
 	isValidSessionId(sessionId: string): boolean {

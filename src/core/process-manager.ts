@@ -9,6 +9,12 @@ export interface ProcessSnapshot {
   cursor: { x: number, y: number } | null
 }
 
+export type ProcessSpecialKey = "enter" | "backspace" | "tab" | "escape" | "up" | "down" | "left" | "right"
+
+export type ProcessInputChunk =
+  | { type: "text"; text: string }
+  | { type: "key"; key: ProcessSpecialKey }
+
 export interface ProcessManager {
   /**
    * Spawn a new persistent session
@@ -33,7 +39,7 @@ export interface ProcessManager {
   /**
    * Send input to the session
    */
-  sendInput(id: string, data: string): Promise<void>
+  sendInput(id: string, input: ProcessInputChunk[]): Promise<void>
 
   /**
    * Get list of active session IDs managed by this backend

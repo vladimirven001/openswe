@@ -4,7 +4,7 @@
  * Supports the Codex CLI (https://github.com/openai/codex)
  */
 
-import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
+import type { Provider, ProviderBranding, ProviderInputCapabilities, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 import { homedir } from "os"
 import { join } from "path"
@@ -104,6 +104,14 @@ const branding: ProviderBranding = {
 	installationUrl: "https://github.com/openai/codex",
 }
 
+const inputCapabilities: ProviderInputCapabilities = {
+	submitKeys: ["Enter"],
+	newlineKeys: ["Ctrl+J"],
+	tmuxNotes: [
+		"Modified Enter behavior depends on terminal and tmux key negotiation.",
+	],
+}
+
 // ============================================================================
 // Parser Patterns
 // ============================================================================
@@ -122,6 +130,7 @@ export const codexProvider: Provider = {
 	id: "codex",
 	name: "Codex",
 	branding,
+	inputCapabilities,
 	parserPatterns,
 
 	isValidSessionId(sessionId: string): boolean {

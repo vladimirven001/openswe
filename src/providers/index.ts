@@ -17,6 +17,7 @@ export { codexProvider } from "./codex"
 export type {
 	Provider,
 	ProviderBranding,
+	ProviderInputCapabilities,
 	ParserPatterns,
 	SpawnCommand,
 	ProviderSessionRef,

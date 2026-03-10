@@ -8,9 +8,37 @@
  */
 
 import { existsSync } from "fs"
-import type { ProcessManager, ProcessSnapshot } from "./process-manager"
+import type { ProcessInputChunk, ProcessManager, ProcessSnapshot, ProcessSpecialKey } from "./process-manager"
 import { logger } from "../utils/logger"
 import { shellQuote } from "../utils/shell"
+
+const TMUX_SPECIAL_KEYS: Record<ProcessSpecialKey, string> = {
+  enter: "Enter",
+  backspace: "BSpace",
+  tab: "Tab",
+  escape: "Escape",
+  up: "Up",
+  down: "Down",
+  left: "Left",
+  right: "Right",
+}
+
+export function buildTmuxSendKeysCommands(target: string, input: ProcessInputChunk[]): string[][] {
+  const commands: string[][] = []
+
+  for (const chunk of input) {
+    if (chunk.type === "text") {
+      if (chunk.text.length === 0) continue
+
+      commands.push(["tmux", "send-keys", "-t", target, "-l", chunk.text])
+      continue
+    }
+
+    commands.push(["tmux", "send-keys", "-t", target, TMUX_SPECIAL_KEYS[chunk.key]])
+  }
+
+  return commands
+}
 
 export class TmuxManager implements ProcessManager {
   private prefix = "openswe-"
@@ -129,6 +157,8 @@ export class TmuxManager implements ProcessManager {
 
     // 2.5 Disable status bar to reclaim vertical space
     await Bun.spawn(["tmux", "set-option", "-t", `${sessionName}:0`, "status", "off"], { stderr: "ignore" }).exited
+    await Bun.spawn(["tmux", "set-option", "-t", `${sessionName}:0`, "xterm-keys", "on"], { stderr: "ignore" }).exited
+    await Bun.spawn(["tmux", "set-option", "-t", `${sessionName}:0`, "extended-keys", "on"], { stderr: "ignore" }).exited
 
     // 3. Get PID of the process inside tmux (approximate)
     // tmux list-panes -t session -F "#{pane_pid}"
@@ -188,11 +218,13 @@ export class TmuxManager implements ProcessManager {
     }
   }
 
-  async sendInput(id: string, data: string): Promise<void> {
-    const sessionName = this.getSessionName(id)
-    // send-keys is mainly for strings. For control chars it's trickier.
-    // simpler approach: just send keys.
-    await Bun.spawn(["tmux", "send-keys", "-t", `${sessionName}:0.0`, data]).exited
+  async sendInput(id: string, input: ProcessInputChunk[]): Promise<void> {
+    const target = `${this.getSessionName(id)}:0.0`
+    const commands = buildTmuxSendKeysCommands(target, input)
+
+    for (const command of commands) {
+      await Bun.spawn(command).exited
+    }
   }
 
   async listActiveSessions(): Promise<string[]> {
