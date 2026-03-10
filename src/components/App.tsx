@@ -1,5 +1,5 @@
 /**
- * App component - root component for OpenSWE TUI
+ * App component - root component for openswe TUI
  *
  * Manages:
  * - State signals for sessions, selection, project info
@@ -66,6 +66,7 @@ export function App(props: AppProps) {
   const [pendingAction, setPendingAction] = createSignal<PendingAction | null>(null)
   const [isAttaching, setIsAttaching] = createSignal(false)
   const [worktreeIcon, setWorktreeIcon] = createSignal<"default" | "success" | "error">("default")
+  let worktreeIconTimeout: ReturnType<typeof setTimeout> | null = null
 
   // Terminal size tracking
   const [termSize, setTermSize] = createSignal({ cols: process.stdout.columns, rows: process.stdout.rows })
@@ -81,6 +82,13 @@ export function App(props: AppProps) {
       return sessionList[index] ?? null
     }
     return null
+  }
+
+  const clearWorktreeIconTimeout = () => {
+    if (worktreeIconTimeout) {
+      clearTimeout(worktreeIconTimeout)
+      worktreeIconTimeout = null
+    }
   }
 
   const sessionListWidth = () => Math.floor(termSize().cols * 0.3)
@@ -223,6 +231,12 @@ export function App(props: AppProps) {
       setSessionStartedAt(undefined)
       setSnapshotLines([])
     }
+  })
+
+  createEffect(() => {
+    sessions()
+    clearWorktreeIconTimeout()
+    setWorktreeIcon("default")
   })
 
   // ============================================================================
@@ -449,7 +463,11 @@ export function App(props: AppProps) {
       logger.warn("Clipboard copy failed:", result.error)
     }
 
-    setTimeout(() => setWorktreeIcon("default"), 1500)
+    clearWorktreeIconTimeout()
+    worktreeIconTimeout = setTimeout(() => {
+      setWorktreeIcon("default")
+      worktreeIconTimeout = null
+    }, 1500)
   }
 
   // ============================================================================
@@ -484,6 +502,10 @@ export function App(props: AppProps) {
       logger.error("Failed to save theme preference:", error)
     }
   }
+
+  onCleanup(() => {
+    clearWorktreeIconTimeout()
+  })
 
   // ============================================================================
   // Render

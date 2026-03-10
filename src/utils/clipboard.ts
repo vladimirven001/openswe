@@ -9,7 +9,7 @@
 
 export type ClipboardResult = { success: true } | { success: false; error: string }
 
-async function detectLinuxClipboardTool(): Promise<string | null> {
+function detectLinuxClipboardTool(): string | null {
   const tools = ["wl-copy", "xclip", "xsel"]
 
   for (const tool of tools) {
@@ -48,7 +48,7 @@ export async function copyToClipboard(text: string): Promise<ClipboardResult> {
       command = "clip"
       break
     case "linux": {
-      command = await detectLinuxClipboardTool()
+      command = detectLinuxClipboardTool()
       if (!command) {
         return { success: false, error: "No clipboard tool found (tried wl-copy, xclip, xsel)" }
       }

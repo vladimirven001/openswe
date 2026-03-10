@@ -1,5 +1,5 @@
 /**
- * Theme type definitions for OpenSWE
+ * Theme type definitions for openswe
  *
  * Matches opencode's JSON theme schema for full compatibility
  */

@@ -37,7 +37,12 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
     
     const isInstalled = await provider.validateInstallation()
     if (!isInstalled) {
-      setErrorMessage(`${provider.branding.displayName} is not installed`)
+      const installationUrl = provider.branding.installationUrl
+      setErrorMessage(
+        installationUrl
+          ? `${provider.branding.displayName} is not installed - install from: ${installationUrl}`
+          : `${provider.branding.displayName} is not installed`
+      )
       return
     }
 

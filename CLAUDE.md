@@ -1,6 +1,6 @@
-# AGENTS.md - OpenSWE Agent Guidelines
+# AGENTS.md - openswe Agent Guidelines
 
-Guidelines for AI agents working on OpenSWE - an AI-powered software engineering orchestration tool.
+Guidelines for AI agents working on openswe - an AI-powered software engineering orchestration tool.
 
 ## Tech Stack
 

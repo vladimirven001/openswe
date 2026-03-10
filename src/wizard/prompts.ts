@@ -78,6 +78,13 @@ export async function promptAiBackend(): Promise<AIBackendChoice | symbol> {
   return backend
 }
 
+/**
+ * Prompt the user to select an AI backend and keep retrying until it is installed
+ *
+ * Loops until the user selects a valid installed backend or cancels the prompt.
+ *
+ * @returns The selected installed backend or a symbol if cancelled
+ */
 export async function promptAiBackendWithValidation(): Promise<AIBackendChoice | symbol> {
   while (true) {
     const backend = await promptAiBackend()
@@ -111,7 +118,7 @@ export async function promptAiBackendWithValidation(): Promise<AIBackendChoice |
  */
 export async function promptAdoptRepo(repoName: string): Promise<boolean | symbol> {
   const adopt = await p.confirm({
-    message: `Initialize OpenSWE for ${repoName}?`,
+    message: `Initialize openswe for ${repoName}?`,
     initialValue: true,
   })
 

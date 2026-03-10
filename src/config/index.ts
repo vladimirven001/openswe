@@ -1,5 +1,5 @@
 /**
- * Main configuration module for OpenSWE
+ * Main configuration module for openswe
  *
  * This module orchestrates loading configuration from multiple sources
  * with the following precedence (highest to lowest):

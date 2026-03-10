@@ -15,7 +15,7 @@ export {
   STATE_DB_FILE,
   LOGS_DIR,
   // Path resolution
-  getOpenSWEDir,
+  getOpensweDir,
   getWorktreesDir,
   getStateDatabasePath,
   getLogsDir,
@@ -35,7 +35,7 @@ export {
   type WorkspaceResult,
   // Detection functions
   detectWorkspace,
-  hasOpenSWEProject,
+  hasOpensweProject,
   hasGitRepo,
   isEmptyDirectory,
   getGitRemoteUrl,
@@ -50,7 +50,7 @@ export {
   type InitResult,
   // Initialization functions
   initProject,
-  createOpenSWEDirectory,
+  createOpensweDirectory,
   createWorktreesDirectory,
   isProjectInitialized,
   cleanupProject,

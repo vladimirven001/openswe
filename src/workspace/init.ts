@@ -1,14 +1,14 @@
 /**
  * Project initialization
  *
- * Handles creating and setting up a new OpenSWE project:
+ * Handles creating and setting up a new openswe project:
  * - Create .openswe/ directory structure
  * - (Database initialization is handled separately)
  */
 
 import { mkdir } from "fs/promises"
 import {
-  getOpenSWEDir,
+  getOpensweDir,
   getWorktreesDir,
   getLogsDir,
 } from "./paths"
@@ -43,8 +43,8 @@ export interface InitResult {
  * Create the .openswe directory structure
  * @param projectRoot - Absolute path to the project root
  */
-export async function createOpenSWEDirectory(projectRoot: string): Promise<void> {
-  const opensweDir = getOpenSWEDir(projectRoot)
+export async function createOpensweDirectory(projectRoot: string): Promise<void> {
+  const opensweDir = getOpensweDir(projectRoot)
   const logsDir = getLogsDir(projectRoot)
 
   // Create .openswe/ and .openswe/logs/
@@ -66,7 +66,7 @@ export async function createWorktreesDirectory(projectRoot: string): Promise<voi
 // ============================================================================
 
 /**
- * Initialize a new OpenSWE project
+ * Initialize a new openswe project
  *
  * This creates the necessary directory structure.
  * Note: Database initialization is handled separately.
@@ -79,11 +79,11 @@ export async function initProject(
   projectRoot: string,
   repoInfo?: RepoInfo
 ): Promise<InitResult> {
-  const opensweDir = getOpenSWEDir(projectRoot)
+  const opensweDir = getOpensweDir(projectRoot)
   const worktreesDir = getWorktreesDir(projectRoot)
 
   // Create directory structure
-  await createOpenSWEDirectory(projectRoot)
+  await createOpensweDirectory(projectRoot)
   await createWorktreesDirectory(projectRoot)
 
   return {
@@ -100,7 +100,7 @@ export async function initProject(
  * @param projectRoot - Absolute path to the project root
  */
 export async function isProjectInitialized(projectRoot: string): Promise<boolean> {
-  const opensweDir = getOpenSWEDir(projectRoot)
+  const opensweDir = getOpensweDir(projectRoot)
 
   try {
     const { stat } = await import("fs/promises")
@@ -122,7 +122,7 @@ export async function isProjectInitialized(projectRoot: string): Promise<boolean
 export async function cleanupProject(projectRoot: string): Promise<void> {
   const { rm } = await import("fs/promises")
 
-  const opensweDir = getOpenSWEDir(projectRoot)
+  const opensweDir = getOpensweDir(projectRoot)
   const worktreesDir = getWorktreesDir(projectRoot)
 
   // Remove directories (ignore errors if they don't exist)

@@ -1,4 +1,4 @@
--- OpenSWE Database Schema
+-- openswe Database Schema
 -- SQLite database for persistent storage of sessions, tasks, and project state
 
 -- ============================================================================
