@@ -165,8 +165,19 @@ export function createDatabaseManager(): DatabaseManager {
       database.exec("INSERT OR REPLACE INTO schema_version (version) VALUES (2)")
     }
 
-    // Add future migrations here:
-    // if (version < 3) { migrateTo3() }
+    // Migration to version 3: Add opened_at column
+    if (version < 3) {
+      const columns = database
+        .query<{ name: string }, []>("PRAGMA table_info(sessions)")
+        .all()
+      const hasColumn = columns.some((col) => col.name === "opened_at")
+
+      if (!hasColumn) {
+        database.exec("ALTER TABLE sessions ADD COLUMN opened_at TEXT")
+      }
+
+      database.exec("INSERT OR REPLACE INTO schema_version (version) VALUES (3)")
+    }
   }
 
   const withTransaction = <T>(fn: () => T): T => {

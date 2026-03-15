@@ -24,6 +24,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
 		tokensUsed: 0,
 		pid: null,
 		aiSessionData: null,
+		openedAt: null,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		...overrides,

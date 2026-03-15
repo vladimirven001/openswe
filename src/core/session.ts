@@ -173,11 +173,6 @@ export class SessionManager {
     }
 
     try {
-      updateSessionStatus(session.id, "active")
-
-      // Auto-transition phase: planning if prompt-driven, working if interactive
-      updateSessionPhase(session.id, options.prompt ? "planning" : "working")
-
       const logPath = getSessionLogPath(this.projectRoot, session.id)
       await this.ensureLogFile(logPath)
 
@@ -295,6 +290,10 @@ export class SessionManager {
         logPath
       )
 
+      updateSessionStatus(session.id, "active")
+
+      // Auto-transition phase: planning if prompt-driven, working if interactive
+      updateSessionPhase(session.id, options.prompt ? "planning" : "working")
       setPid(session.id, pid)
 
       // Start tailing logs for parsing

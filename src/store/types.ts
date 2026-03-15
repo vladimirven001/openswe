@@ -70,6 +70,8 @@ export interface Session {
   pid: number | null
   /** AI backend session reference data */
   aiSessionData: AISessionData | null
+  /** ISO timestamp when session was last opened/running */
+  openedAt: string | null
   /** ISO timestamp when session was created */
   createdAt: string
   /** ISO timestamp when session was last updated */
@@ -98,6 +100,7 @@ export interface UpdateSessionInput {
   tokensUsed?: number
   pid?: number | null
   aiSessionData?: AISessionData | null
+  openedAt?: string | null
 }
 
 // ============================================================================

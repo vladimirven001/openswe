@@ -73,9 +73,9 @@ describe("Database Initialization", () => {
     expect(db).toBeDefined()
   })
 
-  test("schema version is 2", () => {
+  test("schema version is 3", () => {
     const version = getSchemaVersion()
-    expect(version).toBe(2)
+    expect(version).toBe(3)
   })
 
   test("tables are created", () => {
@@ -206,6 +206,7 @@ describe("Session Operations", () => {
     expect(session.retryCount).toBe(0)
     expect(session.tokensUsed).toBe(0)
     expect(session.pid).toBeNull()
+    expect(session.openedAt).toBeNull()
   })
 
   test("createSession with issue data", () => {
@@ -360,6 +361,39 @@ describe("Session Operations", () => {
     const updated = getSession(session.id)!
     expect(updated.status).toBe("active")
     expect(updated.attentionReason).toBeNull()
+    expect(updated.openedAt).toBeDefined()
+  })
+
+  test("updateSessionStatus sets openedAt when activating and preserves it while active", async () => {
+    const session = createSession({
+      name: "test-session",
+      worktreePath: "/path/to/worktree",
+      branchName: "openswe/test-session",
+    })
+
+    updateSessionStatus(session.id, "active")
+    const firstOpenedAt = getSession(session.id)!.openedAt
+
+    expect(firstOpenedAt).toBeDefined()
+
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    updateSessionStatus(session.id, "active")
+    expect(getSession(session.id)!.openedAt).toBe(firstOpenedAt)
+  })
+
+  test("updateSessionStatus clears openedAt when queueing", () => {
+    const session = createSession({
+      name: "test-session",
+      worktreePath: "/path/to/worktree",
+      branchName: "openswe/test-session",
+    })
+
+    updateSessionStatus(session.id, "active")
+    expect(getSession(session.id)!.openedAt).toBeDefined()
+
+    updateSessionStatus(session.id, "queued")
+    expect(getSession(session.id)!.openedAt).toBeNull()
   })
 
   test("incrementRetryCount increments and returns new value", () => {

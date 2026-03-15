@@ -39,7 +39,7 @@ import { useTheme } from "../theme"
 import { logger } from "../utils/logger"
 import { copyToClipboard } from "../utils/clipboard"
 
-/** Refresh interval for polling data (24 fps) */
+/** Refresh interval for polling data */
 const REFRESH_INTERVAL = (1/60) * 1000
 
 export function App(props: AppProps) {
@@ -210,8 +210,8 @@ export function App(props: AppProps) {
     const session = selectedSession()
     if (session) {
       // Track session start time for duration display
-      if (session.status === "active" && session.createdAt) {
-        setSessionStartedAt(new Date(session.createdAt))
+      if (session.status === "active" && session.openedAt) {
+        setSessionStartedAt(new Date(session.openedAt))
         
         // Resize immediately on selection, but only if not attaching
         if (!isAttaching()) {

@@ -8,7 +8,7 @@
  * - Footer: Session duration + attach hint
  */
 
-import { Show, createMemo, For } from "solid-js"
+import { Show, createMemo, createSignal, For, onCleanup, onMount } from "solid-js"
 import type { PreviewProps } from "./types"
 import type { Session } from "../store"
 import { getPhaseProgress } from "./types"
@@ -27,10 +27,10 @@ const VERSION = "v0.1.0" // TODO: Get from package.json or config
 /**
  * Format duration in human-readable form
  */
-function formatDuration(startedAt: Date | undefined): string {
+function formatDuration(startedAt: Date | undefined, now: number): string {
   if (!startedAt) return ""
 
-  const diff = Date.now() - startedAt.getTime()
+  const diff = Math.max(0, now - startedAt.getTime())
   const seconds = Math.floor(diff / 1000)
 
   if (seconds < 60) return `${seconds}s`
@@ -84,9 +84,20 @@ function StatusBanner(props: { session: Session }) {
 
 export function Preview(props: PreviewProps) {
   const colors = useColors()
-  const duration = createMemo(() => formatDuration(props.startedAt))
+  const [now, setNow] = createSignal(Date.now())
+  const duration = createMemo(() => formatDuration(props.startedAt, now()))
   const isActive = createMemo(() => props.session?.status === "active")
   const isPaused = createMemo(() => props.session?.status === "paused")
+
+  onMount(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now())
+    }, 1000)
+
+    onCleanup(() => {
+      clearInterval(interval)
+    })
+  })
 
   // Resolve provider branding from session data if available, otherwise fall back to global prop
   const resolvedBranding = createMemo(() => {

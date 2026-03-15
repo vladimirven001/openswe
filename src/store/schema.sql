@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   tokens_used INTEGER NOT NULL DEFAULT 0,
   pid INTEGER,
   ai_session_data TEXT,                   -- JSON: {backend, sessionId, ...}
+  opened_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

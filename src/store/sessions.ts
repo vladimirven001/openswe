@@ -38,6 +38,7 @@ interface SessionRow {
   tokens_used: number
   pid: number | null
   ai_session_data: string | null
+  opened_at: string | null
   created_at: string
   updated_at: string
 }
@@ -66,6 +67,7 @@ function rowToSession(row: SessionRow): Session {
     tokensUsed: row.tokens_used,
     pid: row.pid,
     aiSessionData: parseAISessionData(row.ai_session_data),
+    openedAt: row.opened_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -207,8 +209,9 @@ export function createSession(data: CreateSessionInput): Session {
       id, name, issue_number, issue_title, issue_body, issue_url,
       worktree_path, branch_name, phase, status,
       attention_reason, retry_count, tokens_used, pid, ai_session_data,
+      opened_at,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'queued', NULL, 0, 0, NULL, ?, ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'queued', NULL, 0, 0, NULL, ?, NULL, ?, ?)`
   ).run(
     id,
     data.name,
@@ -241,6 +244,7 @@ export function createSession(data: CreateSessionInput): Session {
     tokensUsed: 0,
     pid: null,
     aiSessionData: data.aiSessionData ?? null,
+    openedAt: null,
     createdAt: now,
     updatedAt: now,
   }
@@ -306,6 +310,10 @@ export function updateSession(id: string, data: UpdateSessionInput): Session {
     updates.push("ai_session_data = ?")
     values.push(serializeAISessionData(data.aiSessionData))
   }
+  if (data.openedAt !== undefined) {
+    updates.push("opened_at = ?")
+    values.push(data.openedAt)
+  }
 
   values.push(id)
 
@@ -341,9 +349,20 @@ export function updateSessionStatus(
   status: Status,
   reason?: string
 ): void {
+  const current = getSession(id)
+  const openedAt =
+    status === "active"
+      ? current?.status === "active" && current.openedAt
+        ? current.openedAt
+        : nowISO()
+      : status === "queued"
+        ? null
+        : current?.openedAt
+
   updateSession(id, {
     status,
     attentionReason: status === "needs_attention" ? reason ?? null : null,
+    openedAt,
   })
 }
 
