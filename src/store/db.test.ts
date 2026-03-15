@@ -73,9 +73,9 @@ describe("Database Initialization", () => {
     expect(db).toBeDefined()
   })
 
-  test("schema version is 2", () => {
+  test("schema version is 3", () => {
     const version = getSchemaVersion()
-    expect(version).toBe(2)
+    expect(version).toBe(3)
   })
 
   test("tables are created", () => {
@@ -206,6 +206,7 @@ describe("Session Operations", () => {
     expect(session.retryCount).toBe(0)
     expect(session.tokensUsed).toBe(0)
     expect(session.pid).toBeNull()
+    expect(session.issueComments).toEqual([])
   })
 
   test("createSession with issue data", () => {
@@ -214,6 +215,14 @@ describe("Session Operations", () => {
       issueNumber: 123,
       issueTitle: "Fix bug",
       issueBody: "Description of bug",
+      issueComments: [
+        {
+          author: "alice",
+          body: "Can reproduce this on main.",
+          createdAt: "2026-03-15T00:00:00Z",
+          url: "https://github.com/owner/repo/issues/123#issuecomment-1",
+        },
+      ],
       issueUrl: "https://github.com/owner/repo/issues/123",
       worktreePath: "/path/to/worktree",
       branchName: "openswe/issue-123",
@@ -222,6 +231,14 @@ describe("Session Operations", () => {
     expect(session.issueNumber).toBe(123)
     expect(session.issueTitle).toBe("Fix bug")
     expect(session.issueBody).toBe("Description of bug")
+    expect(session.issueComments).toEqual([
+      {
+        author: "alice",
+        body: "Can reproduce this on main.",
+        createdAt: "2026-03-15T00:00:00Z",
+        url: "https://github.com/owner/repo/issues/123#issuecomment-1",
+      },
+    ])
     expect(session.issueUrl).toBe("https://github.com/owner/repo/issues/123")
   })
 

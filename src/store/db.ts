@@ -165,8 +165,22 @@ export function createDatabaseManager(): DatabaseManager {
       database.exec("INSERT OR REPLACE INTO schema_version (version) VALUES (2)")
     }
 
+    // Migration to version 3: Add issue_comments column
+    if (version < 3) {
+      const columns = database
+        .query<{ name: string }, []>("PRAGMA table_info(sessions)")
+        .all()
+      const hasColumn = columns.some((col) => col.name === "issue_comments")
+
+      if (!hasColumn) {
+        database.exec("ALTER TABLE sessions ADD COLUMN issue_comments TEXT NOT NULL DEFAULT '[]'")
+      }
+
+      database.exec("INSERT OR REPLACE INTO schema_version (version) VALUES (3)")
+    }
+
     // Add future migrations here:
-    // if (version < 3) { migrateTo3() }
+    // if (version < 4) { migrateTo4() }
   }
 
   const withTransaction = <T>(fn: () => T): T => {
