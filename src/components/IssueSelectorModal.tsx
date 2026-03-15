@@ -1,11 +1,11 @@
-import { createSignal, onMount, For, Show, createEffect, onCleanup } from "solid-js"
+import { createSignal, For, Show, createEffect, onCleanup } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import type { IssueSelectorModalProps } from "./types"
 import type { Session } from "../store"
 import { fetchIssues, formatRelativeTime, type GitHubIssue, type IssueState } from "../github"
 import { createSessionFromIssue, findNextAvailableWorktreeName } from "./session-utils"
 import { ScrollableText } from "./ScrollableText"
-import { useColors, borders } from "./theme"
+import { useColors } from "./theme"
 import { Footer } from "./Footer"
 import { logger } from "../utils/logger"
 
@@ -25,15 +25,17 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   // ============================================================================
 
   const [issues, setIssues] = createSignal<GitHubIssue[]>([])
-  const [selectedIndices, setSelectedIndices] = createSignal<Set<number>>(new Set())
+  const [selectedIssueNumbers, setSelectedIssueNumbers] = createSignal<Set<number>>(new Set())
   const [focusedIndex, setFocusedIndex] = createSignal(0)
   const [scrollOffset, setScrollOffset] = createSignal(0)
   const [stateFilter, setStateFilter] = createSignal<IssueState>("open")
+  const [searchQuery, setSearchQuery] = createSignal("")
   const [loading, setLoading] = createSignal(true)
   const [error, setError] = createSignal<string | null>(null)
   const [creating, setCreating] = createSignal(false)
   const [spinnerFrame, setSpinnerFrame] = createSignal(0)
   const [resolving, setResolving] = createSignal(false)
+  const [activeRequestId, setActiveRequestId] = createSignal(0)
 
   // Animation effect
   createEffect(() => {
@@ -49,7 +51,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   const [conflictIssue, setConflictIssue] = createSignal<GitHubIssue | null>(null)
   const [suggestedName, setSuggestedName] = createSignal<string>("")
   const [conflictChoice, setConflictChoice] = createSignal<0 | 1 | 2>(0) // 0: Use existing, 1: Create new, 2: Overwrite
-  const [pendingIndices, setPendingIndices] = createSignal<number[]>([])
+  const [pendingIssueNumbers, setPendingIssueNumbers] = createSignal<number[]>([])
   const [successCount, setSuccessCount] = createSignal(0)
   const [createdSessions, setCreatedSessions] = createSignal<Session[]>([])
 
@@ -57,19 +59,27 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   // Data Loading
   // ============================================================================
 
-  const loadIssues = async () => {
+  const loadIssues = async (state: IssueState, search: string) => {
+    const requestId = activeRequestId() + 1
+    setActiveRequestId(requestId)
     setLoading(true)
     setError(null)
 
     logger.debug("Loading issues", {
       repo: props.ownerRepo,
-      state: stateFilter(),
+      state,
+      search,
     })
 
     const result = await fetchIssues(props.ownerRepo, {
-      state: stateFilter(),
+      state,
+      search,
       limit: 500,
     })
+
+    if (activeRequestId() !== requestId) {
+      return
+    }
 
     setLoading(false)
 
@@ -77,7 +87,6 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
       setIssues(result.issues)
       setFocusedIndex(0)
       setScrollOffset(0)
-      setSelectedIndices(new Set<number>())
       logger.debug("Issues loaded", { count: result.issues.length })
     } else {
       setError(result.error ?? "Failed to fetch issues")
@@ -86,21 +95,29 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     }
   }
 
-  onMount(() => {
-    loadIssues()
+  createEffect(() => {
+    const state = stateFilter()
+    const search = searchQuery().trim()
+    const timeoutMs = search.length > 0 ? 150 : 0
+
+    const timeout = setTimeout(() => {
+      loadIssues(state, search)
+    }, timeoutMs)
+
+    onCleanup(() => clearTimeout(timeout))
   })
 
   // ============================================================================
   // Actions
   // ============================================================================
 
-  const toggleSelection = (index: number) => {
-    setSelectedIndices((prev) => {
+  const toggleSelection = (issueNumber: number) => {
+    setSelectedIssueNumbers((prev) => {
       const newSet = new Set<number>(prev)
-      if (newSet.has(index)) {
-        newSet.delete(index)
+      if (newSet.has(issueNumber)) {
+        newSet.delete(issueNumber)
       } else {
-        newSet.add(index)
+        newSet.add(issueNumber)
       }
       return newSet
     })
@@ -110,7 +127,6 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     const currentIndex = STATE_FILTERS.indexOf(stateFilter())
     const nextIndex = (currentIndex + 1) % STATE_FILTERS.length
     setStateFilter(STATE_FILTERS[nextIndex]!)
-    loadIssues()
   }
 
   // Recursive function to process the queue of selected issues
@@ -118,20 +134,20 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     // Check if cancelled
     if (!creating()) return
 
-    const indices = pendingIndices()
-    if (indices.length === 0) {
+    const issueNumbers = pendingIssueNumbers()
+    if (issueNumbers.length === 0) {
       // All done
       finishCreation()
       return
     }
 
-    const index = indices[0]! // Get first
+    const issueNumber = issueNumbers[0]!
     const issueList = issues()
-    const issue = issueList[index]
+    const issue = issueList.find((candidate) => candidate.number === issueNumber)
 
     if (!issue) {
-      // Skip invalid index
-      setPendingIndices(indices.slice(1))
+      // Skip invalid issue number
+      setPendingIssueNumbers(issueNumbers.slice(1))
       await processNextIssue()
       return
     }
@@ -149,7 +165,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
       setCreatedSessions((prev) => [...prev, result.session!])
       logger.debug("Session created from issue", { issueNumber: issue.number })
       // Remove from queue and continue
-      setPendingIndices(indices.slice(1))
+      setPendingIssueNumbers(issueNumbers.slice(1))
       await processNextIssue()
     } else if (!result.success) {
       // Check if it's a conflict
@@ -174,7 +190,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
         setError(result.error ?? "Failed to create session")
         
         // Remove from queue and continue
-        setPendingIndices(indices.slice(1))
+        setPendingIssueNumbers(issueNumbers.slice(1))
         await processNextIssue()
       }
     }
@@ -218,7 +234,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     setSuggestedName("")
     
     // Remove current issue from queue (it's done now)
-    setPendingIndices((prev) => prev.slice(1))
+    setPendingIssueNumbers((prev) => prev.slice(1))
     
     // Continue processing
     await processNextIssue()
@@ -234,13 +250,15 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   }
 
   const startCreation = async () => {
-    let selected = new Set(selectedIndices())
+    let selected = new Set(selectedIssueNumbers())
 
     // Auto-select focused if nothing selected
     if (selected.size === 0 && issues().length > 0) {
-      const focused = focusedIndex()
-      selected.add(focused)
-      toggleSelection(focused)
+      const focusedIssue = issues()[focusedIndex()]
+      if (focusedIssue) {
+        selected.add(focusedIssue.number)
+        toggleSelection(focusedIssue.number)
+      }
     }
 
     if (selected.size === 0) return
@@ -251,7 +269,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     setCreatedSessions([])
     
     // Initialize queue
-    setPendingIndices(Array.from(selected))
+    setPendingIssueNumbers(Array.from(selected))
     
     logger.debug("Creating sessions from selected issues", {
       selectedCount: selected.size,
@@ -259,6 +277,15 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
 
     // Start processing
     await processNextIssue()
+  }
+
+  const extractChar = (event: { name?: string; sequence?: string }) => {
+    if (event.sequence && event.sequence.length === 1) {
+      return event.sequence
+    }
+    if (event.name === "space") return " "
+    if (event.name && event.name.length === 1) return event.name
+    return null
   }
 
   // ============================================================================
@@ -288,7 +315,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
         case "escape":
           // Cancel everything
           setConflictIssue(null)
-          setPendingIndices([])
+          setPendingIssueNumbers([])
           setCreating(false)
           break
       }
@@ -301,10 +328,12 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     if (event.name === "escape") {
       if (creating()) {
         // Cancel creation
-        setPendingIndices([])
+        setPendingIssueNumbers([])
         setCreating(false)
         setConflictIssue(null)
         setResolving(false)
+      } else if (searchQuery().length > 0) {
+        setSearchQuery("")
       } else {
         props.onClose()
       }
@@ -339,7 +368,6 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     }
 
     switch (event.name) {
-      case "j":
       case "down":
         if (issueList.length > 0) {
           const nextIndex = Math.min(focusedIndex() + 1, issueList.length - 1)
@@ -350,7 +378,6 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
         }
         break
 
-      case "k":
       case "up":
         if (issueList.length > 0) {
           const prevIndex = Math.max(focusedIndex() - 1, 0)
@@ -363,34 +390,30 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
 
       case "space":
         if (issueList.length > 0) {
-          toggleSelection(focusedIndex())
+          const focusedIssue = issueList[focusedIndex()]
+          if (focusedIssue) {
+            toggleSelection(focusedIssue.number)
+          }
         }
-        break
+        return
 
       case "tab":
         cycleStateFilter()
-        break
+        return
 
       case "return":
         startCreation()
-        break
+        return
 
-      case "a":
-        // Select all
-        if (issueList.length > 0) {
-          const allIndices = new Set<number>(issueList.map((_, i) => i))
-          if (selectedIndices().size === issueList.length) {
-            setSelectedIndices(new Set<number>())
-          } else {
-            setSelectedIndices(allIndices)
-          }
-        }
-        break
+      case "backspace":
+        setSearchQuery((prev) => prev.slice(0, -1))
+        return
+    }
 
-      case "r":
-        // Refresh
-        loadIssues()
-        break
+    const char = extractChar(event)
+    if (char) {
+      setSearchQuery((prev) => prev + char)
+      setError(null)
     }
   })
 
@@ -417,8 +440,10 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   // ============================================================================
 
   const modalWidth = 80
-  const modalHeight = 24
-  const selectedCount = () => selectedIndices().size
+  const modalHeight = 25
+  const selectedCount = () => selectedIssueNumbers().size
+  const searchPlaceholder = "Type to search issues, labels, people"
+  const currentPendingIssue = () => issues().find((issue) => issue.number === pendingIssueNumbers()[0])
 
   return (
     <box
@@ -479,9 +504,20 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
               paddingTop={1}
               overflow="hidden"
             >
+              <box paddingLeft={2} paddingRight={2} marginBottom={1}>
+                <text fg={colors().text.secondary}>
+                  Search:{" "}
+                </text>
+                <text fg={searchQuery().length > 0 ? colors().text.primary : colors().text.muted}>
+                  {searchQuery() || searchPlaceholder}
+                </text>
+              </box>
+
               <Show when={loading()}>
                 <box justifyContent="center" alignItems="center" flexGrow={1}>
-                  <text fg={colors().text.muted}>Loading issues...</text>
+                  <text fg={colors().text.muted}>
+                    {searchQuery().trim().length > 0 ? "Searching issues..." : "Loading issues..."}
+                  </text>
                 </box>
               </Show>
 
@@ -493,7 +529,9 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
 
               <Show when={!loading() && !error() && issues().length === 0}>
                 <box justifyContent="center" alignItems="center" flexGrow={1}>
-                  <text fg={colors().text.muted}>No issues found</text>
+                  <text fg={colors().text.muted}>
+                    {searchQuery().trim().length > 0 ? "No matching issues found" : "No issues found"}
+                  </text>
                 </box>
               </Show>
 
@@ -507,7 +545,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
                     {(issue, i) => {
                       const index = () => scrollOffset() + i()
                       const isFocused = () => focusedIndex() === index()
-                      const isSelected = () => selectedIndices().has(index())
+                      const isSelected = () => selectedIssueNumbers().has(issue.number)
 
                       const textColor = () => isFocused() ? colors().text.primary : colors().text.secondary
                       const mutedColor = () => isFocused() ? colors().text.primary : colors().text.muted
@@ -587,15 +625,17 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
             <Footer
               bgColor={colors().bg.primary}
               actions={[
+                { key: "Type", label: "Search" },
+                { key: "Bksp", label: "Delete" },
                 { key: "Space", label: "Toggle" },
-                { key: "a", label: "All" },
                 { key: "Tab", label: "Filter" },
                 ...(selectedCount() > 0 
                   ? [{ key: "Enter", label: `Create (${selectedCount()})` }]
                   : [{ key: "Enter", label: "Create" }]
                 ),
-                { key: "Esc", label: "Close" },
+                { key: "Esc", label: searchQuery().length > 0 ? "Clear" : "Close" },
               ]}
+              message={`${issues().length} issues`}
             />
           </>
         }>
@@ -613,10 +653,10 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
                     </box>
                     
                     {/* Current Issue being processed */}
-                    <Show when={pendingIndices().length > 0}>
+                    <Show when={pendingIssueNumbers().length > 0}>
                         <box marginTop={1} padding={1} borderColor={colors().border.secondary} borderStyle="rounded">
                            <text fg={colors().text.primary}>
-                               #{issues()[pendingIndices()[0]!]?.number} {truncate(issues()[pendingIndices()[0]!]?.title || "", 40)}
+                               #{currentPendingIssue()?.number} {truncate(currentPendingIssue()?.title || "", 40)}
                            </text>
                         </box>
                     </Show>

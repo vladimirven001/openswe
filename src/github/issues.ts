@@ -19,6 +19,14 @@ export interface IssueLabel {
   color: string
 }
 
+/** GitHub user information */
+export interface GitHubUser {
+  /** GitHub login */
+  login: string
+  /** Profile URL */
+  url: string
+}
+
 /** GitHub issue data */
 export interface GitHubIssue {
   /** Issue number */
@@ -33,6 +41,10 @@ export interface GitHubIssue {
   url: string
   /** Labels attached to the issue */
   labels: IssueLabel[]
+  /** Issue author */
+  author: GitHubUser | null
+  /** Assigned users */
+  assignees: GitHubUser[]
   /** ISO timestamp when issue was created */
   createdAt: string
   /** ISO timestamp when issue was last updated */
@@ -45,6 +57,8 @@ export interface FetchIssuesOptions {
   state?: IssueState
   /** Filter by labels (AND logic) */
   labels?: string[]
+  /** Search query */
+  search?: string
   /** Maximum number of issues to fetch (default: 50) */
   limit?: number
 }
@@ -91,7 +105,7 @@ export async function fetchIssues(
   ownerRepo: string,
   options?: FetchIssuesOptions
 ): Promise<FetchIssuesResult> {
-  const { state = "open", labels = [], limit = 50 } = options ?? {}
+  const { state = "open", labels = [], search, limit = 50 } = options ?? {}
 
   try {
     // Build command arguments
@@ -106,12 +120,16 @@ export async function fetchIssues(
       "--limit",
       String(limit),
       "--json",
-      "number,title,body,state,url,labels,createdAt,updatedAt",
+      "number,title,body,state,url,labels,author,assignees,createdAt,updatedAt",
     ]
 
     // Add label filters
     for (const label of labels) {
       args.push("--label", label)
+    }
+
+    if (search && search.trim().length > 0) {
+      args.push("--search", search.trim())
     }
 
     const proc = Bun.spawn(args, {
@@ -161,6 +179,8 @@ export async function fetchIssues(
         state: string
         url: string
         labels: Array<{ name: string; color: string }>
+        author: { login: string; url: string } | null
+        assignees: Array<{ login: string; url: string }>
         createdAt: string
         updatedAt: string
       }>
@@ -172,6 +192,11 @@ export async function fetchIssues(
         state: raw.state as "OPEN" | "CLOSED",
         url: raw.url,
         labels: raw.labels.map((l) => ({ name: l.name, color: l.color })),
+        author: raw.author ? { login: raw.author.login, url: raw.author.url } : null,
+        assignees: raw.assignees.map((assignee) => ({
+          login: assignee.login,
+          url: assignee.url,
+        })),
         createdAt: raw.createdAt,
         updatedAt: raw.updatedAt,
       }))
@@ -218,7 +243,7 @@ export async function getIssue(
         "--repo",
         ownerRepo,
         "--json",
-        "number,title,body,state,url,labels,createdAt,updatedAt",
+        "number,title,body,state,url,labels,author,assignees,createdAt,updatedAt",
       ],
       {
         stdout: "pipe",
@@ -247,6 +272,8 @@ export async function getIssue(
         state: string
         url: string
         labels: Array<{ name: string; color: string }>
+        author: { login: string; url: string } | null
+        assignees: Array<{ login: string; url: string }>
         createdAt: string
         updatedAt: string
       }
@@ -258,6 +285,11 @@ export async function getIssue(
         state: raw.state as "OPEN" | "CLOSED",
         url: raw.url,
         labels: raw.labels.map((l) => ({ name: l.name, color: l.color })),
+        author: raw.author ? { login: raw.author.login, url: raw.author.url } : null,
+        assignees: raw.assignees.map((assignee) => ({
+          login: assignee.login,
+          url: assignee.url,
+        })),
         createdAt: raw.createdAt,
         updatedAt: raw.updatedAt,
       }
