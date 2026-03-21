@@ -61,6 +61,8 @@ export interface FetchIssuesOptions {
   search?: string
   /** Maximum number of issues to fetch (default: 50) */
   limit?: number
+  /** Optional abort signal to cancel in-flight gh process */
+  signal?: AbortSignal
 }
 
 /** Result of fetching issues */
@@ -71,6 +73,8 @@ export interface FetchIssuesResult {
   issues: GitHubIssue[]
   /** Error message if fetch failed */
   error?: string
+  /** Whether request was cancelled */
+  cancelled?: boolean
 }
 
 /** Result of fetching a single issue */
@@ -98,14 +102,14 @@ const DEFAULT_TIMEOUT_MS = 30000
  * Fetch issues from a GitHub repository
  *
  * @param ownerRepo - Repository in "owner/repo" format
- * @param options - Fetch options (state, labels, limit)
+ * @param options - Fetch options (state, labels, search, limit, signal)
  * @returns Result with fetched issues or error
  */
 export async function fetchIssues(
   ownerRepo: string,
   options?: FetchIssuesOptions
 ): Promise<FetchIssuesResult> {
-  const { state = "open", labels = [], search, limit = 50 } = options ?? {}
+  const { state = "open", labels = [], search, limit = 50, signal } = options ?? {}
 
   try {
     // Build command arguments
@@ -132,17 +136,53 @@ export async function fetchIssues(
       args.push("--search", search.trim())
     }
 
+    if (signal?.aborted) {
+      return {
+        success: false,
+        issues: [],
+        cancelled: true,
+      }
+    }
+
     const proc = Bun.spawn(args, {
       stdout: "pipe",
       stderr: "pipe",
     })
 
+    const abortPromise = new Promise<"aborted">((resolve) => {
+      signal?.addEventListener(
+        "abort",
+        () => {
+          try {
+            proc.kill()
+          } catch {
+            // Ignore kill errors
+          }
+          resolve("aborted")
+        },
+        { once: true }
+      )
+    })
+
     // Race between process completion and timeout
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined
     const timeoutPromise = new Promise<"timeout">((resolve) =>
-      setTimeout(() => resolve("timeout"), DEFAULT_TIMEOUT_MS)
+      (timeoutHandle = setTimeout(() => resolve("timeout"), DEFAULT_TIMEOUT_MS))
     )
 
-    const raceResult = await Promise.race([proc.exited, timeoutPromise])
+    const raceResult = await Promise.race([proc.exited, timeoutPromise, abortPromise])
+
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle)
+    }
+
+    if (raceResult === "aborted") {
+      return {
+        success: false,
+        issues: [],
+        cancelled: true,
+      }
+    }
 
     if (raceResult === "timeout") {
       // Kill the process if it's still running

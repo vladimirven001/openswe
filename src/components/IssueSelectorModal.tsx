@@ -2,7 +2,7 @@ import { createSignal, For, Show, createEffect, onCleanup } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import type { IssueSelectorModalProps } from "./types"
 import type { Session } from "../store"
-import { fetchIssues, formatRelativeTime, type GitHubIssue, type IssueState } from "../github"
+import { fetchIssues, formatRelativeTime, getIssue, type GitHubIssue, type IssueState } from "../github"
 import { createSessionFromIssue, findNextAvailableWorktreeName } from "./session-utils"
 import { ScrollableText } from "./ScrollableText"
 import { useColors } from "./theme"
@@ -36,6 +36,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   const [spinnerFrame, setSpinnerFrame] = createSignal(0)
   const [resolving, setResolving] = createSignal(false)
   const [activeRequestId, setActiveRequestId] = createSignal(0)
+  let fetchAbortController: AbortController | null = null
 
   // Animation effect
   createEffect(() => {
@@ -60,6 +61,10 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   // ============================================================================
 
   const loadIssues = async (state: IssueState, search: string) => {
+    fetchAbortController?.abort()
+    const abortController = new AbortController()
+    fetchAbortController = abortController
+
     const requestId = activeRequestId() + 1
     setActiveRequestId(requestId)
     setLoading(true)
@@ -75,9 +80,14 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
       state,
       search,
       limit: 500,
+      signal: abortController.signal,
     })
 
     if (activeRequestId() !== requestId) {
+      return
+    }
+
+    if (result.cancelled) {
       return
     }
 
@@ -104,7 +114,11 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
       loadIssues(state, search)
     }, timeoutMs)
 
-    onCleanup(() => clearTimeout(timeout))
+    onCleanup(() => {
+      clearTimeout(timeout)
+      fetchAbortController?.abort()
+      fetchAbortController = null
+    })
   })
 
   // ============================================================================
@@ -143,13 +157,25 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
 
     const issueNumber = issueNumbers[0]!
     const issueList = issues()
-    const issue = issueList.find((candidate) => candidate.number === issueNumber)
+    let issue = issueList.find((candidate) => candidate.number === issueNumber)
 
     if (!issue) {
-      // Skip invalid issue number
-      setPendingIssueNumbers(issueNumbers.slice(1))
-      await processNextIssue()
-      return
+      const issueResult = await getIssue(props.ownerRepo, issueNumber)
+
+      if (!creating()) return
+
+      if (issueResult.success && issueResult.issue) {
+        issue = issueResult.issue
+      } else {
+        logger.warn("Unable to load selected issue by number", {
+          issueNumber,
+          error: issueResult.error,
+        })
+        setError(`Failed to load selected issue #${issueNumber}: ${issueResult.error ?? "Issue not found"}`)
+        setPendingIssueNumbers(issueNumbers.slice(1))
+        await processNextIssue()
+        return
+      }
     }
 
     // Try to create session normally first
@@ -402,6 +428,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
         return
 
       case "return":
+      case "enter":
         startCreation()
         return
 
