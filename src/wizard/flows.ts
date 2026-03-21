@@ -37,6 +37,7 @@ import { fetchIssues } from "../github"
 import { getTicketProvider } from "../tickets"
 import { deleteSessionsByTicketProvider, getSessionCountByTicketProvider, initDatabaseWithPath, updateProjectTicketProvider } from "../store"
 import { getStateDatabasePath } from "../workspace/paths"
+import { logger } from "../utils/logger"
 
 // ============================================================================
 // Types
@@ -309,16 +310,21 @@ export async function runExistingRepoWizard(
     issueSpinner.start("Fetching issues...")
 
     const provider = getTicketProvider(configResult.ticketProvider!)
-    const result = await provider.fetchTickets(repoFullName, { state: "open", limit: 30 })
+    try {
+      const result = await provider.fetchTickets(repoFullName, { state: "open", limit: 30 })
 
-    if (result.success) {
-      issueSpinner.stop(`Fetched ${result.tickets.length} issues`)
-      if (result.tickets.length === 0) {
-        note("No issues found. You can fetch again later from the TUI.", "Issues")
+      if (result.success) {
+        issueSpinner.stop(`Fetched ${result.tickets.length} issues`)
+        if (result.tickets.length === 0) {
+          note("No issues found. You can fetch again later from the TUI.", "Issues")
+        }
+      } else {
+        issueSpinner.stop("Issue fetch skipped")
+        logWarning(result.error ?? "Failed to fetch issues")
       }
-    } else {
+    } catch (err) {
       issueSpinner.stop("Issue fetch skipped")
-      logWarning(result.error ?? "Failed to fetch issues")
+      logWarning(err instanceof Error ? err.message : "Failed to fetch issues")
     }
   } else {
     note("Issue fetching skipped. You can load issues later from the TUI.", "Skipped")
@@ -381,7 +387,7 @@ async function gatherConfiguration(): Promise<ConfigurationResult> {
   if (isCancelled(backend)) {
     return { cancelled: true }
   }
-  console.log("hello")
+
   // Ticket provider
   const ticketProvider = await promptTicketProvider()
   if (isCancelled(ticketProvider)) {
@@ -433,30 +439,11 @@ export async function runReconfigureWizard(
     return { completed: false, cancelled: true }
   }
 
-  // Update configs
-  const s = spinner()
-  s.start("Saving configuration...")
-
-  // Update global config
-  const globalConfig: PartialConfig = {
-    ai: { backend: configResult.aiBackend },
-  }
-  await saveGlobalConfig(globalConfig)
-
   // Check if ticket provider changed
   const newTicketProvider = configResult.ticketProvider!
   const providerChanged = oldTicketProvider !== newTicketProvider
 
-  // Update project config and database with ticket provider
-  if (existingConfig && configResult.ticketProvider) {
-    existingConfig.ticketProvider = configResult.ticketProvider
-    await saveProjectConfig(cwd, existingConfig)
-    updateProjectTicketProvider(configResult.ticketProvider)
-  }
-
-  s.stop("Configuration saved")
-
-  // Handle ticket provider change
+  // Handle ticket provider change BEFORE persisting
   if (providerChanged) {
     const oldProviderLabel = oldTicketProvider === "github" ? "GitHub Issues" : oldTicketProvider
     const newProviderLabel = newTicketProvider === "github" ? "GitHub Issues" : newTicketProvider
@@ -481,10 +468,29 @@ export async function runReconfigureWizard(
     }
   }
 
+  // Update configs
+  const s = spinner()
+  s.start("Saving configuration...")
+
+  // Update global config
+  const globalConfig: PartialConfig = {
+    ai: { backend: configResult.aiBackend },
+  }
+  await saveGlobalConfig(globalConfig)
+
+  // Update project config and database with ticket provider
+  if (existingConfig && configResult.ticketProvider) {
+    existingConfig.ticketProvider = configResult.ticketProvider
+    await saveProjectConfig(cwd, existingConfig)
+    updateProjectTicketProvider(configResult.ticketProvider)
+  }
+
+  s.stop("Configuration saved")
+
   // Ask to fetch issues from new provider
   const fetchConsent = await promptFetchIssues(repoFullName)
   if (isCancelled(fetchConsent)) {
-    return { completed: false, cancelled: true }
+    return { completed: true, cancelled: false }
   }
 
   if (fetchConsent) {
@@ -492,16 +498,21 @@ export async function runReconfigureWizard(
     issueSpinner.start("Fetching issues...")
 
     const provider = getTicketProvider(newTicketProvider)
-    const result = await provider.fetchTickets(repoFullName, { state: "open", limit: 30 })
+    try {
+      const result = await provider.fetchTickets(repoFullName, { state: "open", limit: 30 })
 
-    if (result.success) {
-      issueSpinner.stop(`Fetched ${result.tickets.length} issues`)
-      if (result.tickets.length === 0) {
-        note("No issues found. You can fetch again later from the TUI.", "Issues")
+      if (result.success) {
+        issueSpinner.stop(`Fetched ${result.tickets.length} issues`)
+        if (result.tickets.length === 0) {
+          note("No issues found. You can fetch again later from the TUI.", "Issues")
+        }
+      } else {
+        issueSpinner.stop("Issue fetch skipped")
+        logWarning(result.error ?? "Failed to fetch issues")
       }
-    } else {
+    } catch (err) {
       issueSpinner.stop("Issue fetch skipped")
-      logWarning(result.error ?? "Failed to fetch issues")
+      logWarning(err instanceof Error ? err.message : "Failed to fetch issues")
     }
   } else {
     note("Issue fetching skipped. You can load issues later from the TUI.", "Skipped")

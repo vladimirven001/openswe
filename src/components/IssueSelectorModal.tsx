@@ -2,9 +2,10 @@ import { createSignal, onMount, For, Show, createEffect, onCleanup } from "solid
 import { useKeyboard } from "@opentui/solid"
 import type { IssueSelectorModalProps } from "./types"
 import type { Session } from "../store"
-import { formatRelativeTime, type GitHubIssue } from "../github"
+import { formatRelativeTime } from "../github"
+import type { GitHubIssue } from "../github"
 import { getTicketProvider, type Ticket } from "../tickets"
-import { createSessionFromIssue, findNextAvailableWorktreeName } from "./session-utils"
+import { createSessionFromIssue, findNextAvailableWorktreeName, type CreateSessionOptions } from "./session-utils"
 import { ScrollableText } from "./ScrollableText"
 import { useColors, borders } from "./theme"
 import { Footer } from "./Footer"
@@ -162,48 +163,60 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     }
 
     // Try to create session normally first
-    const githubIssue = ticketToGitHubIssue(issue)
-    const result = await createSessionFromIssue(props.projectRoot, githubIssue, {
-      ticketProvider: props.ticketProvider,
-      aiSessionData: { backend: props.currentBackend }
-    })
-    
-    // Check if cancelled during await
-    if (!creating()) return
+    try {
+      const githubIssue = ticketToGitHubIssue(issue)
+      const result = await createSessionFromIssue(props.projectRoot, githubIssue, {
+        ticketProvider: props.ticketProvider,
+        aiSessionData: { backend: props.currentBackend }
+      })
+      
+      // Check if cancelled during await
+      if (!creating()) return
 
-    if (result.success && result.session) {
-      setSuccessCount((c) => c + 1)
-      setCreatedSessions((prev) => [...prev, result.session!])
-      logger.debug("Session created from issue", { issueNumber: issue.number })
-      // Remove from queue and continue
-      setPendingIndices(indices.slice(1))
-      await processNextIssue()
-    } else if (!result.success) {
-      // Check if it's a conflict
-      if (result.error?.toLowerCase().includes("already exists")) {
-        // Find suggested name
-        const suggestion = await findNextAvailableWorktreeName(props.projectRoot, issue.number)
-        
-        // Check if cancelled during await
-        if (!creating()) return
-
-        // Pause and show conflict UI
-        setConflictIssue(issue)
-        setSuggestedName(suggestion)
-        setConflictChoice(0) // Default to "Continue"
-        // Don't remove from queue yet, we'll process it after resolution
-      } else {
-        // Other error, just log and continue
-        logger.warn("Failed to create session from issue", {
-          issueNumber: issue.number,
-          error: result.error,
-        })
-        setError(result.error ?? "Failed to create session")
-        
+      if (result.success && result.session) {
+        setSuccessCount((c) => c + 1)
+        setCreatedSessions((prev) => [...prev, result.session!])
+        logger.debug("Session created from issue", { issueNumber: issue.number })
         // Remove from queue and continue
         setPendingIndices(indices.slice(1))
         await processNextIssue()
+      } else if (!result.success) {
+        // Check if it's a conflict
+        if (result.error?.toLowerCase().includes("already exists")) {
+          // Find suggested name
+          const suggestion = await findNextAvailableWorktreeName(props.projectRoot, issue.number)
+          
+          // Check if cancelled during await
+          if (!creating()) return
+
+          // Pause and show conflict UI
+          setConflictIssue(issue)
+          setSuggestedName(suggestion)
+          setConflictChoice(0) // Default to "Continue"
+          // Don't remove from queue yet, we'll process it after resolution
+        } else {
+          // Other error, just log and continue
+          logger.warn("Failed to create session from issue", {
+            issueNumber: issue.number,
+            error: result.error,
+          })
+          setError(result.error ?? "Failed to create session")
+          
+          // Remove from queue and continue
+          setPendingIndices(indices.slice(1))
+          await processNextIssue()
+        }
       }
+    } catch (err) {
+      logger.warn("Failed to create session from issue", {
+        issueNumber: issue.number,
+        error: err instanceof Error ? err.message : String(err),
+      })
+      setError(err instanceof Error ? err.message : "Failed to create session")
+      
+      // Remove from queue and continue
+      setPendingIndices(indices.slice(1))
+      await processNextIssue()
     }
   }
 
@@ -216,30 +229,39 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     const choice = conflictChoice()
     const suggestion = suggestedName()
     
-    // Create with chosen strategy
-    const githubIssue = ticketToGitHubIssue(issue)
-    const result = await createSessionFromIssue(props.projectRoot, githubIssue, {
-      	ticketProvider: props.ticketProvider,
-      	worktreeNameOverride: choice === 1 ? suggestion : undefined,
-      	overwriteWorktreeChoice: choice, // Maps directly to OverwriteWorktreeChoice enum
-        aiSessionData: { backend: props.currentBackend }
-    })
-    
-    setResolving(false)
+    try {
+      // Create with chosen strategy
+      const githubIssue = ticketToGitHubIssue(issue)
+      const result = await createSessionFromIssue(props.projectRoot, githubIssue, {
+        	ticketProvider: props.ticketProvider,
+        	worktreeNameOverride: choice === 1 ? suggestion : undefined,
+        	overwriteWorktreeChoice: choice, // Maps directly to OverwriteWorktreeChoice enum
+          aiSessionData: { backend: props.currentBackend }
+      })
+      
+      setResolving(false)
 
-    // Check if cancelled during await
-    if (!creating()) return
+      // Check if cancelled during await
+      if (!creating()) return
 
-    if (result.success && result.session) {
-      setSuccessCount((c) => c + 1)
-      setCreatedSessions((prev) => [...prev, result.session!])
-      logger.debug("Session created after conflict resolution", { issueNumber: issue.number })
-    } else {
+      if (result.success && result.session) {
+        setSuccessCount((c) => c + 1)
+        setCreatedSessions((prev) => [...prev, result.session!])
+        logger.debug("Session created after conflict resolution", { issueNumber: issue.number })
+      } else {
+        logger.warn("Failed to create session after conflict resolution", {
+          issueNumber: issue.number,
+          error: result.error,
+        })
+        setError(result.error ?? "Failed to create session")
+      }
+    } catch (err) {
+      setResolving(false)
       logger.warn("Failed to create session after conflict resolution", {
         issueNumber: issue.number,
-        error: result.error,
+        error: err instanceof Error ? err.message : String(err),
       })
-      setError(result.error ?? "Failed to create session")
+      setError(err instanceof Error ? err.message : "Failed to create session")
     }
 
     // Clear conflict state

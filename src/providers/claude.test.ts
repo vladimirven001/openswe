@@ -11,6 +11,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
 		issueBody: "Test body",
 		issueUrl: "https://github.com/owner/repo/issues/42",
 		ticketProvider: "github",
+		prUrl: null,
 		worktreePath: "/tmp/worktree",
 		branchName: "openswe/issue-42",
 		phase: "pending",

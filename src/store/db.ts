@@ -165,8 +165,50 @@ export function createDatabaseManager(): DatabaseManager {
       database.exec("INSERT OR REPLACE INTO schema_version (version) VALUES (2)")
     }
 
+    // Migration to version 3: Add ticket_provider and ticket_provider_config columns
+    if (version < 3) {
+      // Add ticket_provider to sessions table if not exists
+      const sessionColumns = database
+        .query<{ name: string }, []>("PRAGMA table_info(sessions)")
+        .all()
+      const hasTicketProvider = sessionColumns.some((col) => col.name === "ticket_provider")
+      if (!hasTicketProvider) {
+        database.exec("ALTER TABLE sessions ADD COLUMN ticket_provider TEXT NOT NULL DEFAULT 'github'")
+      }
+
+      // Add ticket_provider and ticket_provider_config to project table if not exists
+      const projectColumns = database
+        .query<{ name: string }, []>("PRAGMA table_info(project)")
+        .all()
+      const hasProjectTicketProvider = projectColumns.some((col) => col.name === "ticket_provider")
+      if (!hasProjectTicketProvider) {
+        database.exec("ALTER TABLE project ADD COLUMN ticket_provider TEXT NOT NULL DEFAULT 'github'")
+      }
+      const hasProjectConfig = projectColumns.some((col) => col.name === "ticket_provider_config")
+      if (!hasProjectConfig) {
+        database.exec("ALTER TABLE project ADD COLUMN ticket_provider_config TEXT")
+      }
+
+      // Update version
+      database.exec("INSERT OR REPLACE INTO schema_version (version) VALUES (3)")
+    }
+
+    // Migration to version 4: Add pr_url column to sessions table
+    if (version < 4) {
+      const sessionColumns = database
+        .query<{ name: string }, []>("PRAGMA table_info(sessions)")
+        .all()
+      const hasPrUrl = sessionColumns.some((col) => col.name === "pr_url")
+      if (!hasPrUrl) {
+        database.exec("ALTER TABLE sessions ADD COLUMN pr_url TEXT")
+      }
+
+      // Update version
+      database.exec("INSERT OR REPLACE INTO schema_version (version) VALUES (4)")
+    }
+
     // Add future migrations here:
-    // if (version < 3) { migrateTo3() }
+    // if (version < 4) { migrateTo4() }
   }
 
   const withTransaction = <T>(fn: () => T): T => {

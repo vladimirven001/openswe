@@ -19,28 +19,28 @@ import { existsSync } from "fs"
 
 /** Options for creating a session from an issue */
 export interface CreateSessionOptions {
-	/**
-	 * Custom worktree name to use instead of the issue number.
-	 * Useful when resolving conflicts by appending a suffix.
-	 */
-	worktreeNameOverride?: string
-	
-	/**
-	 * Whether to overwrite an existing worktree if it exists.
-	 * If false (default), will fail if worktree exists.
-	 */
-	overwriteWorktreeChoice?: OverwriteWorktreeChoice
+ 	/**
+ 	 * Custom worktree name to use instead of the issue number.
+ 	 * Useful when resolving conflicts by appending a suffix.
+ 	 */
+ 	worktreeNameOverride?: string
+ 	
+ 	/**
+ 	 * Whether to overwrite an existing worktree if it exists.
+ 	 * If false (default), will fail if worktree exists.
+ 	 */
+ 	overwriteWorktreeChoice?: OverwriteWorktreeChoice
 
-	/**
-	 * Initial AI session data (e.g. backend provider)
-	 */
-	aiSessionData?: AISessionData
+ 	/**
+ 	 * Initial AI session data (e.g. backend provider)
+ 	 */
+ 	aiSessionData?: AISessionData
 
-	/**
-	 * Ticket provider used to fetch this issue
-	 */
-	ticketProvider?: TicketProviderType
-}
+ 	/**
+ 	 * Ticket provider used to fetch this issue
+ 	 */
+ 	ticketProvider: TicketProviderType
+ }
 
 export enum OverwriteWorktreeChoice {
 	use_existing = 0,
@@ -109,13 +109,13 @@ export async function findNextAvailableWorktreeName(
  *
  * @param projectRoot - Absolute path to the project root
  * @param issue - GitHub issue data
- * @param options - Creation options (optional)
+ * @param options - Creation options (ticketProvider is required)
  * @returns Result with the created session or error
  */
 export async function createSessionFromIssue(
-	projectRoot: string,
-	issue: GitHubIssue,
-	options: CreateSessionOptions = {}
+ 	projectRoot: string,
+ 	issue: GitHubIssue,
+ 	options: CreateSessionOptions
 ): Promise<CreateSessionResult> {
 	const worktreeName = options.worktreeNameOverride ?? issue.number
 
@@ -170,18 +170,18 @@ export async function createSessionFromIssue(
 	}
 
 	// Create the session in the database
-	try {
-		const session = createSession({
-			name: `#${issue.number}: ${issue.title}`,
-			issueNumber: issue.number,
-			issueTitle: issue.title,
-			issueBody: issue.body ?? undefined,
-			issueUrl: issue.url,
-			ticketProvider: options.ticketProvider ?? "github",
-			worktreePath,
-			branchName,
-			aiSessionData: options.aiSessionData,
-		})
+ 	try {
+ 		const session = createSession({
+ 			name: `#${issue.number}: ${issue.title}`,
+ 			issueNumber: issue.number,
+ 			issueTitle: issue.title,
+ 			issueBody: issue.body ?? undefined,
+ 			issueUrl: issue.url,
+ 			ticketProvider: options.ticketProvider,
+ 			worktreePath,
+ 			branchName,
+ 			aiSessionData: options.aiSessionData,
+ 		})
 
 		logger.debug("Session created", {
 			sessionId: session.id,

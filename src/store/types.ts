@@ -29,6 +29,13 @@ export type Status =
 /** Supported ticket/issue providers */
 export type TicketProviderType = "github" | "jira"
 
+const VALID_TICKET_PROVIDERS: readonly TicketProviderType[] = ["github", "jira"]
+
+/** Check if a value is a valid TicketProviderType */
+export function isTicketProviderType(val: unknown): val is TicketProviderType {
+  return typeof val === "string" && (val === "github" || val === "jira")
+}
+
 /** Backend session reference for AI integrations */
 export interface AISessionData {
   backend: "opencode" | "claude" | "codex"
@@ -57,6 +64,8 @@ export interface Session {
   issueUrl: string | null
   /** Ticket provider used to fetch this issue */
   ticketProvider: TicketProviderType
+  /** PR URL if one was created for this session */
+  prUrl: string | null
   /** Absolute path to the git worktree for this session */
   worktreePath: string
   /** Git branch name for this session */
@@ -104,6 +113,7 @@ export interface UpdateSessionInput {
   tokensUsed?: number
   pid?: number | null
   aiSessionData?: AISessionData | null
+  prUrl?: string | null
 }
 
 // ============================================================================

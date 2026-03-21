@@ -7,6 +7,8 @@
 
 import { getDatabase, nowISO } from "./db"
 import type { ProjectState, CreateProjectInput, TicketProviderType } from "./types"
+import { isTicketProviderType } from "./types"
+import { logger } from "../utils/logger"
 
 // ============================================================================
 // Database Row Type
@@ -30,11 +32,17 @@ interface ProjectRow {
  * Convert database row to ProjectState
  */
 function rowToProject(row: ProjectRow): ProjectState {
+  if (!isTicketProviderType(row.ticket_provider)) {
+    logger.warn("Invalid ticket_provider in database", {
+      value: row.ticket_provider,
+    })
+    throw new Error(`Invalid ticket_provider value in database: ${row.ticket_provider}`)
+  }
   return {
     id: 1,
     repoFullName: row.repo_full_name,
     repoUrl: row.repo_url,
-    ticketProvider: row.ticket_provider as TicketProviderType,
+    ticketProvider: row.ticket_provider,
     ticketProviderConfig: row.ticket_provider_config,
     createdAt: row.created_at,
     lastOpenedAt: row.last_opened_at,
@@ -119,7 +127,7 @@ export function updateLastOpened(): void {
  */
 export function updateProjectTicketProvider(provider: TicketProviderType): void {
   const db = getDatabase()
-  db.query("UPDATE project SET ticket_provider = ? WHERE id = 1").run(provider)
+  db.query("UPDATE project SET ticket_provider = ?, ticket_provider_config = NULL WHERE id = 1").run(provider)
 }
 
 /**

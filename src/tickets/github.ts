@@ -66,14 +66,14 @@ export const githubTicketProvider: TicketProvider = {
     repoFullName: string,
     ticketId: string
   ): Promise<FetchTicketResult> {
-    const issueNumber = parseInt(ticketId, 10)
-    if (isNaN(issueNumber)) {
+    if (!/^\d+$/.test(ticketId)) {
       return {
         success: false,
         ticket: null,
         error: "Invalid ticket ID. Expected a numeric issue number.",
       }
     }
+    const issueNumber = Number(ticketId)
 
     const result = await getIssue(repoFullName, issueNumber)
 

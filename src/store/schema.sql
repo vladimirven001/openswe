@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   issue_body TEXT,
   issue_url TEXT,
   ticket_provider TEXT NOT NULL DEFAULT 'github',
+  pr_url TEXT,
   worktree_path TEXT NOT NULL,
   branch_name TEXT NOT NULL,
   phase TEXT NOT NULL DEFAULT 'pending',

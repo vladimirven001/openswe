@@ -25,8 +25,9 @@ export const jiraTicketProvider: TicketProvider = {
     _options?: FetchTicketsOptions
   ): Promise<FetchTicketsResult> {
     return {
-      success: true,
+      success: false,
       tickets: [],
+      error: "JIRA provider not implemented",
     }
   },
 

@@ -33,6 +33,8 @@ export interface ProjectConfig {
 /** Project config file name */
 const PROJECT_CONFIG_FILE = "project.json"
 
+const VALID_TICKET_PROVIDERS: string[] = ["github", "jira"]
+
 // ============================================================================
 // Path Utilities
 // ============================================================================
@@ -158,6 +160,7 @@ function isValidProjectConfig(value: unknown): value is ProjectConfig {
     typeof obj.repoUrl === "string" &&
     obj.repoUrl.length > 0 &&
     typeof obj.ticketProvider === "string" &&
+    VALID_TICKET_PROVIDERS.includes(obj.ticketProvider) &&
     (obj.ticketProviderConfig === null || typeof obj.ticketProviderConfig === "string") &&
     typeof obj.createdAt === "string" &&
     typeof obj.lastOpenedAt === "string"

@@ -174,7 +174,7 @@ export async function promptFetchIssues(repoName: string): Promise<boolean | sym
  * @returns true to delete, false to keep, or symbol if cancelled
  */
 export async function promptDeleteOldSessions(
-  oldProvider: string,
+  oldProvider: TicketProviderChoice,
   sessionCount: number
 ): Promise<boolean | symbol> {
   if (sessionCount === 0) {
