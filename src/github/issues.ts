@@ -83,6 +83,27 @@ export interface FetchIssueResult {
   error?: string
 }
 
+interface RawGitHubComment {
+  author?: {
+    login?: string | null
+  } | null
+  body?: string | null
+  createdAt?: string | null
+  url?: string | null
+}
+
+interface RawGitHubIssue {
+  number: number
+  title: string
+  body: string | null
+  state: string
+  url: string
+  labels: Array<{ name: string; color: string }>
+  createdAt: string
+  updatedAt: string
+  comments?: RawGitHubComment[]
+}
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -168,17 +189,7 @@ export async function fetchIssues(
 
     // Parse JSON response
     try {
-      const rawIssues = JSON.parse(stdout) as Array<{
-        number: number
-        title: string
-        body: string | null
-        state: string
-        url: string
-        labels: Array<{ name: string; color: string }>
-        createdAt: string
-        updatedAt: string
-        comments?: RawGitHubComment[]
-      }>
+      const rawIssues = JSON.parse(stdout) as RawGitHubIssue[]
 
       const issues: GitHubIssue[] = rawIssues.map(mapRawIssue)
 
@@ -246,19 +257,9 @@ export async function getIssue(
 
     // Parse JSON response
     try {
-      const raw = JSON.parse(stdout) as {
-        number: number
-        title: string
-        body: string | null
-        state: string
-        url: string
-        labels: Array<{ name: string; color: string }>
-        createdAt: string
-        updatedAt: string
-        comments?: RawGitHubComment[]
-      }
+      const raw = JSON.parse(stdout) as RawGitHubIssue
 
-      const issue: GitHubIssue = mapRawIssue(raw)
+      const issue = mapRawIssue(raw)
 
       return {
         success: true,
@@ -284,15 +285,6 @@ export async function getIssue(
 // Helpers
 // ============================================================================
 
-interface RawGitHubComment {
-  author?: {
-    login?: string | null
-  } | null
-  body?: string | null
-  createdAt?: string | null
-  url?: string | null
-}
-
 function mapRawComment(raw: RawGitHubComment): GitHubIssueComment {
   return {
     author: raw.author?.login ?? null,
@@ -302,28 +294,29 @@ function mapRawComment(raw: RawGitHubComment): GitHubIssueComment {
   }
 }
 
-function mapRawIssue(raw: {
-  number: number
-  title: string
-  body: string | null
-  state: string
-  url: string
-  labels: Array<{ name: string; color: string }>
-  createdAt: string
-  updatedAt: string
-  comments?: RawGitHubComment[]
-}): GitHubIssue {
+function mapRawIssue(raw: RawGitHubIssue): GitHubIssue {
   return {
     number: raw.number,
     title: raw.title,
     body: raw.body,
-    state: raw.state as "OPEN" | "CLOSED",
+    state: normalizeIssueState(raw.state),
     url: raw.url,
     labels: raw.labels.map((l) => ({ name: l.name, color: l.color })),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
     comments: (raw.comments ?? []).map(mapRawComment),
   }
+}
+
+function normalizeIssueState(state: string): "OPEN" | "CLOSED" {
+  const normalized = state.trim().toUpperCase()
+
+  if (normalized === "OPEN") return "OPEN"
+  if (normalized === "CLOSED") return "CLOSED"
+
+  console.warn(`Unexpected GitHub issue state: ${state}. Falling back to OPEN.`)
+
+  return "OPEN"
 }
 
 /**
