@@ -23,6 +23,13 @@ const TMUX_SPECIAL_KEYS: Record<ProcessSpecialKey, string> = {
   right: "Right",
 }
 
+/**
+ * Build tmux send-keys command arguments from structured input chunks.
+ *
+ * @param target - tmux target (session:window.pane or target string)
+ * @param input - array of input chunks where chunk.type is "text" or a special key
+ * @returns array of tmux send-keys command argument arrays
+ */
 export function buildTmuxSendKeysCommands(target: string, input: ProcessInputChunk[]): string[][] {
   const commands: string[][] = []
 
@@ -38,6 +45,24 @@ export function buildTmuxSendKeysCommands(target: string, input: ProcessInputChu
   }
 
   return commands
+}
+
+type SpawnResult = {
+  exited: Promise<number>
+  stderr: ReadableStream<Uint8Array> | null
+}
+
+type SpawnProcess = (command: string[]) => SpawnResult
+
+export async function runTmuxCommand(command: string[], spawnProcess?: SpawnProcess): Promise<void> {
+  const proc = spawnProcess ? spawnProcess(command) : Bun.spawn(command, { stderr: "pipe" })
+  const exitCode = await proc.exited
+
+  if (exitCode !== 0) {
+    const stderr = (await new Response(proc.stderr).text()).trim()
+    const stderrDetails = stderr ? ` stderr=${stderr}` : ""
+    throw new Error(`tmux command failed (exit=${exitCode}) command=${JSON.stringify(command)}${stderrDetails}`)
+  }
 }
 
 export class TmuxManager implements ProcessManager {
@@ -223,7 +248,7 @@ export class TmuxManager implements ProcessManager {
     const commands = buildTmuxSendKeysCommands(target, input)
 
     for (const command of commands) {
-      await Bun.spawn(command).exited
+      await runTmuxCommand(command)
     }
   }
 
