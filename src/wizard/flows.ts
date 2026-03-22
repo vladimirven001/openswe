@@ -10,6 +10,8 @@ import {
   promptAiBackendWithValidation,
   promptAdoptRepo,
   promptFetchIssues,
+  promptTicketProvider,
+  promptDeleteOldSessions,
   isCancelled,
   intro,
   outro,
@@ -19,6 +21,7 @@ import {
   logSuccess,
   logWarning,
   type AIBackendChoice,
+  type TicketProviderChoice,
 } from "./prompts"
 import { checkGhCli, validateGhRepo } from "../github/client"
 import { cloneRepo, isValidOwnerRepo, getCloneUrl } from "../git/repo"
@@ -26,10 +29,15 @@ import { initProject } from "../workspace/init"
 import {
   saveProjectConfig,
   createProjectConfig,
+  loadProjectConfig,
 } from "../workspace/project"
 import { saveGlobalConfig } from "../config/global"
 import type { PartialConfig } from "../config/types"
 import { fetchIssues } from "../github"
+import { getTicketProvider } from "../tickets"
+import { deleteSessionsByTicketProvider, getSessionCountByTicketProvider, initDatabaseWithPath, updateProjectTicketProvider } from "../store"
+import { getStateDatabasePath } from "../workspace/paths"
+import { logger } from "../utils/logger"
 
 // ============================================================================
 // Types
@@ -47,6 +55,8 @@ export interface WizardResult {
   repoFullName?: string
   /** Selected AI backend */
   aiBackend?: AIBackendChoice
+  /** Selected ticket provider */
+  ticketProvider?: TicketProviderChoice
 }
 
 // ============================================================================
@@ -210,7 +220,11 @@ export async function runEmptyDirectoryWizard(
   await initProject(cwd, { fullName: repoFullName, remoteUrl: repoUrl })
 
   // Save project config
-  const projectConfig = createProjectConfig(repoFullName, repoUrl)
+  const projectConfig = createProjectConfig(
+    repoFullName,
+    repoUrl,
+    configResult.ticketProvider
+  )
   await saveProjectConfig(cwd, projectConfig)
 
   // Save global config
@@ -232,6 +246,7 @@ export async function runEmptyDirectoryWizard(
     cancelled: false,
     repoFullName,
     aiBackend: configResult.aiBackend,
+    ticketProvider: configResult.ticketProvider,
   }
 }
 
@@ -278,7 +293,13 @@ export async function runExistingRepoWizard(
     return { completed: false, cancelled: true }
   }
 
-  // Ask permission to fetch issues immediately
+  // Gather configuration (AI backend + ticket provider)
+  const configResult = await gatherConfiguration()
+  if (configResult.cancelled) {
+    return { completed: false, cancelled: true }
+  }
+
+  // Ask permission to fetch issues using selected provider
   const fetchConsent = await promptFetchIssues(repoFullName)
   if (isCancelled(fetchConsent)) {
     return { completed: false, cancelled: true }
@@ -286,27 +307,27 @@ export async function runExistingRepoWizard(
 
   if (fetchConsent) {
     const issueSpinner = spinner()
-    issueSpinner.start("Fetching GitHub issues...")
+    issueSpinner.start("Fetching issues...")
 
-    const issuesResult = await fetchIssues(repoFullName, { state: "open", limit: 30 })
+    const provider = getTicketProvider(configResult.ticketProvider!)
+    try {
+      const result = await provider.fetchTickets(repoFullName, { state: "open", limit: 30 })
 
-    if (issuesResult.success) {
-      issueSpinner.stop(`Fetched ${issuesResult.issues.length} issues`)
-      if (issuesResult.issues.length === 0) {
-        note("No issues found. You can fetch again later from the TUI.", "Issues")
+      if (result.success) {
+        issueSpinner.stop(`Fetched ${result.tickets.length} issues`)
+        if (result.tickets.length === 0) {
+          note("No issues found. You can fetch again later from the TUI.", "Issues")
+        }
+      } else {
+        issueSpinner.stop("Issue fetch skipped")
+        logWarning(result.error ?? "Failed to fetch issues")
       }
-    } else {
+    } catch (err) {
       issueSpinner.stop("Issue fetch skipped")
-      logWarning(issuesResult.error ?? "Failed to fetch issues")
+      logWarning(err instanceof Error ? err.message : "Failed to fetch issues")
     }
   } else {
     note("Issue fetching skipped. You can load issues later from the TUI.", "Skipped")
-  }
-
-  // Gather configuration
-  const configResult = await gatherConfiguration()
-  if (configResult.cancelled) {
-    return { completed: false, cancelled: true }
   }
 
   // Initialize project
@@ -317,7 +338,11 @@ export async function runExistingRepoWizard(
   await initProject(cwd, { fullName: repoFullName, remoteUrl: repoUrl })
 
   // Save project config
-  const projectConfig = createProjectConfig(repoFullName, repoUrl)
+  const projectConfig = createProjectConfig(
+    repoFullName,
+    repoUrl,
+    configResult.ticketProvider
+  )
   await saveProjectConfig(cwd, projectConfig)
 
   // Save global config
@@ -339,6 +364,7 @@ export async function runExistingRepoWizard(
     cancelled: false,
     repoFullName,
     aiBackend: configResult.aiBackend,
+    ticketProvider: configResult.ticketProvider,
   }
 }
 
@@ -349,6 +375,7 @@ export async function runExistingRepoWizard(
 interface ConfigurationResult {
   cancelled: boolean
   aiBackend?: AIBackendChoice
+  ticketProvider?: TicketProviderChoice
 }
 
 /**
@@ -361,9 +388,16 @@ async function gatherConfiguration(): Promise<ConfigurationResult> {
     return { cancelled: true }
   }
 
+  // Ticket provider
+  const ticketProvider = await promptTicketProvider()
+  if (isCancelled(ticketProvider)) {
+    return { cancelled: true }
+  }
+
   return {
     cancelled: false,
     aiBackend: backend,
+    ticketProvider,
   }
 }
 
@@ -391,22 +425,98 @@ export async function runReconfigureWizard(
 
   note(`Repository: ${repoFullName}`, "Current Project")
 
-  // Gather configuration
+  // Initialize database for existing project
+  const dbPath = getStateDatabasePath(cwd)
+  await initDatabaseWithPath(dbPath)
+
+  // Get existing config to check current ticket provider
+  const existingConfig = await loadProjectConfig(cwd)
+  const oldTicketProvider = existingConfig?.ticketProvider ?? "github"
+
+  // Gather configuration (AI backend + ticket provider)
   const configResult = await gatherConfiguration()
   if (configResult.cancelled) {
     return { completed: false, cancelled: true }
   }
 
-  // Update global config
+  // Check if ticket provider changed
+  const newTicketProvider = configResult.ticketProvider!
+  const providerChanged = oldTicketProvider !== newTicketProvider
+
+  // Handle ticket provider change BEFORE persisting
+  if (providerChanged) {
+    const oldProviderLabel = oldTicketProvider === "github" ? "GitHub Issues" : oldTicketProvider
+    const newProviderLabel = newTicketProvider === "github" ? "GitHub Issues" : newTicketProvider
+
+    logWarning(`Ticket provider changed from ${oldProviderLabel} to ${newProviderLabel}`)
+
+    // Check how many sessions from old provider
+    const oldSessionCount = getSessionCountByTicketProvider(oldTicketProvider)
+
+    // Offer to delete old sessions
+    if (oldSessionCount > 0) {
+      const deleteOld = await promptDeleteOldSessions(oldTicketProvider, oldSessionCount)
+
+      if (isCancelled(deleteOld)) {
+        return { completed: false, cancelled: true }
+      }
+
+      if (deleteOld) {
+        const deleted = deleteSessionsByTicketProvider(oldTicketProvider)
+        logSuccess(`Deleted ${deleted} session(s) from ${oldProviderLabel}`)
+      }
+    }
+  }
+
+  // Update configs
   const s = spinner()
   s.start("Saving configuration...")
 
+  // Update global config
   const globalConfig: PartialConfig = {
     ai: { backend: configResult.aiBackend },
   }
   await saveGlobalConfig(globalConfig)
 
+  // Update project config and database with ticket provider
+  if (existingConfig && configResult.ticketProvider) {
+    existingConfig.ticketProvider = configResult.ticketProvider
+    await saveProjectConfig(cwd, existingConfig)
+    updateProjectTicketProvider(configResult.ticketProvider)
+  }
+
   s.stop("Configuration saved")
+
+  // Ask to fetch issues from new provider
+  const fetchConsent = await promptFetchIssues(repoFullName)
+  if (isCancelled(fetchConsent)) {
+    return { completed: true, cancelled: false }
+  }
+
+  if (fetchConsent) {
+    const issueSpinner = spinner()
+    issueSpinner.start("Fetching issues...")
+
+    const provider = getTicketProvider(newTicketProvider)
+    try {
+      const result = await provider.fetchTickets(repoFullName, { state: "open", limit: 30 })
+
+      if (result.success) {
+        issueSpinner.stop(`Fetched ${result.tickets.length} issues`)
+        if (result.tickets.length === 0) {
+          note("No issues found. You can fetch again later from the TUI.", "Issues")
+        }
+      } else {
+        issueSpinner.stop("Issue fetch skipped")
+        logWarning(result.error ?? "Failed to fetch issues")
+      }
+    } catch (err) {
+      issueSpinner.stop("Issue fetch skipped")
+      logWarning(err instanceof Error ? err.message : "Failed to fetch issues")
+    }
+  } else {
+    note("Issue fetching skipped. You can load issues later from the TUI.", "Skipped")
+  }
 
   outro("Reconfiguration complete!")
 
@@ -415,5 +525,6 @@ export async function runReconfigureWizard(
     cancelled: false,
     repoFullName,
     aiBackend: configResult.aiBackend,
+    ticketProvider: configResult.ticketProvider,
   }
 }

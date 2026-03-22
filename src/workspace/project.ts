@@ -8,6 +8,7 @@
 
 import { join } from "path"
 import { getOpensweDir } from "./paths"
+import type { TicketProviderType } from "../store/types"
 
 // ============================================================================
 // Types
@@ -19,6 +20,10 @@ export interface ProjectConfig {
   repoFullName: string
   /** Git remote URL (SSH or HTTPS format) */
   repoUrl: string
+  /** Ticket/issue provider type */
+  ticketProvider: TicketProviderType
+  /** Ticket provider configuration (JSON string) */
+  ticketProviderConfig: string | null
   /** ISO timestamp when project was created */
   createdAt: string
   /** ISO timestamp when project was last opened */
@@ -27,6 +32,8 @@ export interface ProjectConfig {
 
 /** Project config file name */
 const PROJECT_CONFIG_FILE = "project.json"
+
+const VALID_TICKET_PROVIDERS: string[] = ["github", "jira"]
 
 // ============================================================================
 // Path Utilities
@@ -113,16 +120,21 @@ export async function updateLastOpened(projectRoot: string): Promise<void> {
  *
  * @param repoFullName - Repository in owner/repo format
  * @param repoUrl - Git remote URL
- * @param options - Optional overrides
+ * @param ticketProvider - Ticket provider type (defaults to github)
+ * @param ticketProviderConfig - Ticket provider config (optional)
  */
 export function createProjectConfig(
   repoFullName: string,
   repoUrl: string,
+  ticketProvider: TicketProviderType = "github",
+  ticketProviderConfig: string | null = null
 ): ProjectConfig {
   const now = new Date().toISOString()
   return {
     repoFullName,
     repoUrl,
+    ticketProvider,
+    ticketProviderConfig,
     createdAt: now,
     lastOpenedAt: now,
   }
@@ -147,6 +159,9 @@ function isValidProjectConfig(value: unknown): value is ProjectConfig {
     obj.repoFullName.length > 0 &&
     typeof obj.repoUrl === "string" &&
     obj.repoUrl.length > 0 &&
+    typeof obj.ticketProvider === "string" &&
+    VALID_TICKET_PROVIDERS.includes(obj.ticketProvider) &&
+    (obj.ticketProviderConfig === null || typeof obj.ticketProviderConfig === "string") &&
     typeof obj.createdAt === "string" &&
     typeof obj.lastOpenedAt === "string"
   )

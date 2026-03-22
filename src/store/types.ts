@@ -26,6 +26,16 @@ export type Status =
   | "completed"
   | "failed"
 
+/** Supported ticket/issue providers */
+export type TicketProviderType = "github" | "jira"
+
+const VALID_TICKET_PROVIDERS: readonly TicketProviderType[] = ["github", "jira"]
+
+/** Check if a value is a valid TicketProviderType */
+export function isTicketProviderType(val: unknown): val is TicketProviderType {
+  return typeof val === "string" && (val === "github" || val === "jira")
+}
+
 /** Backend session reference for AI integrations */
 export interface AISessionData {
   backend: "opencode" | "claude" | "codex"
@@ -52,6 +62,10 @@ export interface Session {
   issueBody: string | null
   /** GitHub issue URL (for quick access) */
   issueUrl: string | null
+  /** Ticket provider used to fetch this issue */
+  ticketProvider: TicketProviderType
+  /** PR URL if one was created for this session */
+  prUrl: string | null
   /** Absolute path to the git worktree for this session */
   worktreePath: string
   /** Git branch name for this session */
@@ -83,6 +97,7 @@ export interface CreateSessionInput {
   issueTitle?: string
   issueBody?: string
   issueUrl?: string
+  ticketProvider?: TicketProviderType
   worktreePath: string
   branchName: string
   aiSessionData?: AISessionData | null
@@ -98,6 +113,7 @@ export interface UpdateSessionInput {
   tokensUsed?: number
   pid?: number | null
   aiSessionData?: AISessionData | null
+  prUrl?: string | null
 }
 
 // ============================================================================
@@ -122,6 +138,10 @@ export interface ProjectState {
   repoFullName: string
   /** Git remote URL */
   repoUrl: string
+  /** Ticket/issue provider type */
+  ticketProvider: TicketProviderType
+  /** Ticket provider configuration (JSON) */
+  ticketProviderConfig: string | null
   /** ISO timestamp when project was created */
   createdAt: string
   /** ISO timestamp when project was last opened */
@@ -132,6 +152,8 @@ export interface ProjectState {
 export interface CreateProjectInput {
   repoFullName: string
   repoUrl: string
+  ticketProvider?: TicketProviderType
+  ticketProviderConfig?: string | null
 }
 
 // ============================================================================

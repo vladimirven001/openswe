@@ -7,6 +7,8 @@
 import * as p from "@clack/prompts"
 import { isValidOwnerRepo } from "../git/repo"
 import { getProvider } from "../providers"
+import { getAllTicketProviders } from "../tickets"
+import type { TicketProviderType } from "../store/types"
 
 // ============================================================================
 // Types
@@ -14,6 +16,9 @@ import { getProvider } from "../providers"
 
 /** AI backend options */
 export type AIBackendChoice = "opencode" | "claude" | "codex"
+
+/** Ticket provider options */
+export type TicketProviderChoice = TicketProviderType
 
 // ============================================================================
 // Repository Input
@@ -107,6 +112,29 @@ export async function promptAiBackendWithValidation(): Promise<AIBackendChoice |
 }
 
 // ============================================================================
+// Ticket Provider Selection
+// ============================================================================
+
+/**
+ * Prompt the user to select a ticket provider
+ *
+ * @returns The selected provider or a symbol if cancelled
+ */
+export async function promptTicketProvider(): Promise<TicketProviderChoice | symbol> {
+  const providers = getAllTicketProviders()
+
+  const provider = await p.select({
+    message: "Select ticket/issue provider:",
+    options: providers.map((p) => ({
+      value: p.id as TicketProviderChoice,
+      label: p.name,
+    })),
+  })
+
+  return provider
+}
+
+// ============================================================================
 // Repository Adoption
 // ============================================================================
 
@@ -134,8 +162,37 @@ export async function promptAdoptRepo(repoName: string): Promise<boolean | symbo
  */
 export async function promptFetchIssues(repoName: string): Promise<boolean | symbol> {
   const consent = await p.confirm({
-    message: `Fetch GitHub issues for ${repoName}?`,
+    message: `Fetch issues for ${repoName}?`,
     initialValue: true,
+  })
+
+  return consent
+}
+
+// ============================================================================
+// Ticket Provider Change
+// ============================================================================
+
+/**
+ * Prompt to delete sessions from previous ticket provider
+ *
+ * @param oldProvider - The previous ticket provider
+ * @param sessionCount - Number of sessions to delete
+ * @returns true to delete, false to keep, or symbol if cancelled
+ */
+export async function promptDeleteOldSessions(
+  oldProvider: TicketProviderChoice,
+  sessionCount: number
+): Promise<boolean | symbol> {
+  if (sessionCount === 0) {
+    return false
+  }
+
+  const providerLabel = oldProvider === "github" ? "GitHub Issues" : oldProvider
+
+  const consent = await p.confirm({
+    message: `Delete ${sessionCount} session(s) from ${providerLabel}? They may have stale data.`,
+    initialValue: false,
   })
 
   return consent

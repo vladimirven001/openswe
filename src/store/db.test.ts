@@ -73,9 +73,9 @@ describe("Database Initialization", () => {
     expect(db).toBeDefined()
   })
 
-  test("schema version is 2", () => {
+  test("schema version is 4", () => {
     const version = getSchemaVersion()
-    expect(version).toBe(2)
+    expect(version).toBe(4)
   })
 
   test("tables are created", () => {

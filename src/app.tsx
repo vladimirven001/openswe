@@ -34,6 +34,8 @@ export async function startTUI(config: GlobalConfig, projectRoot: string) {
       createProject({
         repoFullName: projectConfig.repoFullName,
         repoUrl: projectConfig.repoUrl,
+        ticketProvider: projectConfig.ticketProvider,
+        ticketProviderConfig: projectConfig.ticketProviderConfig,
       })
       logger.debug("Initialized project state in database", projectConfig)
     } else {

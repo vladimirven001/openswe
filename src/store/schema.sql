@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS project (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   repo_full_name TEXT NOT NULL,
   repo_url TEXT NOT NULL,
+  ticket_provider TEXT NOT NULL DEFAULT 'github',
+  ticket_provider_config TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   last_opened_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -39,6 +41,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   issue_title TEXT,
   issue_body TEXT,
   issue_url TEXT,
+  ticket_provider TEXT NOT NULL DEFAULT 'github',
+  pr_url TEXT,
   worktree_path TEXT NOT NULL,
   branch_name TEXT NOT NULL,
   phase TEXT NOT NULL DEFAULT 'pending',
