@@ -1,5 +1,5 @@
 /**
- * Store module - SQLite database layer for OpenSWE
+ * Store module - SQLite database layer for openswe
  *
  * Provides persistent storage for sessions, human tasks, project state,
  * and output buffers using Bun's native bun:sqlite.

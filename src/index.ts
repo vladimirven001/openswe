@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * OpenSWE - AI-powered Software Engineering orchestration
+ * openswe - AI-powered Software Engineering orchestration
  *
  * Main entry point with CLI argument parsing, config loading, and workspace detection.
  */
@@ -96,7 +96,7 @@ async function main() {
   // Apply log level from merged config
   setLogLevel(config.advanced.logLevel)
 
-  logger.debug("OpenSWE starting...")
+  logger.debug("openswe starting...")
   logger.debug("Config file path:", getConfigPath())
   logger.debug("Loaded configuration:", config)
 
@@ -179,7 +179,7 @@ async function handleWorkspace(
 }
 
 /**
- * Handle existing OpenSWE project - load and continue
+ * Handle existing openswe project - load and continue
  */
 async function handleExistingProject(
   workspace: WorkspaceResult,
@@ -255,7 +255,7 @@ async function handleExistingRepo(
   logger.debug("")
   logConfigSummary(updatedConfig)
   logger.debug("")
-  logger.debug("OpenSWE initialized (Phase 4 - wizard complete)")
+  logger.debug("openswe initialized (Phase 4 - wizard complete)")
   logger.debug("Launching TUI...")
 
   await handleExistingProject(
@@ -296,7 +296,7 @@ async function handleEmptyDirectory(
   logger.info("")
   logConfigSummary(updatedConfig)
   logger.info("")
-  logger.info("OpenSWE initialized (Phase 4 - wizard complete)")
+  logger.info("openswe initialized (Phase 4 - wizard complete)")
   logger.info("Launching TUI...")
 
   await handleExistingProject(
@@ -316,7 +316,7 @@ async function handleEmptyDirectory(
  * Show project status (non-TUI mode)
  */
 async function showStatus(config: GlobalConfig, workspace: WorkspaceResult): Promise<void> {
-  console.log("OpenSWE Status")
+  console.log("openswe Status")
   console.log("==============")
   console.log("")
   console.log("Configuration:")

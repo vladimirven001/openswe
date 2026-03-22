@@ -1,5 +1,5 @@
 /**
- * Components module - OpenSWE TUI components
+ * Components module - openswe TUI components
  *
  * Exports all components and types for the TUI interface.
  */

@@ -109,7 +109,7 @@ export async function runEmptyDirectoryWizard(
   cwd: string,
   cliRepo?: string
 ): Promise<WizardResult> {
-  intro("OpenSWE Setup")
+  intro("openswe Setup")
 
   // Check prerequisites
   const prereq = await checkPrerequisites()
@@ -214,7 +214,7 @@ export async function runEmptyDirectoryWizard(
   }
 
   // Initialize project
-  s.start("Initializing OpenSWE project...")
+  s.start("Initializing openswe project...")
 
   const repoUrl = getCloneUrl(repoFullName, "ssh")
   await initProject(cwd, { fullName: repoFullName, remoteUrl: repoUrl })
@@ -239,7 +239,7 @@ export async function runEmptyDirectoryWizard(
   logSuccess("Created .worktrees/ directory")
   logSuccess("Saved configuration")
 
-  outro("Setup complete! OpenSWE is ready to use.")
+  outro("Setup complete! openswe is ready to use.")
 
   return {
     completed: true,
@@ -260,7 +260,7 @@ export async function runEmptyDirectoryWizard(
  * This flow:
  * 1. Asks user to confirm adoption
  * 2. Prompts for configuration
- * 3. Initializes OpenSWE project
+ * 3. Initializes openswe project
  * 4. Saves configuration
  *
  * @param cwd - Current working directory (git repo)
@@ -272,7 +272,7 @@ export async function runExistingRepoWizard(
   repoFullName: string,
   remoteUrl?: string
 ): Promise<WizardResult> {
-  intro("OpenSWE Setup")
+  intro("openswe Setup")
 
   const prereq = await checkPrerequisites()
   if (!prereq.ok) {
@@ -332,7 +332,7 @@ export async function runExistingRepoWizard(
 
   // Initialize project
   const s = spinner()
-  s.start("Initializing OpenSWE project...")
+  s.start("Initializing openswe project...")
 
   const repoUrl = remoteUrl ?? getCloneUrl(repoFullName, "ssh")
   await initProject(cwd, { fullName: repoFullName, remoteUrl: repoUrl })
@@ -357,7 +357,7 @@ export async function runExistingRepoWizard(
   logSuccess("Created .worktrees/ directory")
   logSuccess("Saved configuration")
 
-  outro("Setup complete! OpenSWE is ready to use.")
+  outro("Setup complete! openswe is ready to use.")
 
   return {
     completed: true,
@@ -415,7 +415,7 @@ export async function runReconfigureWizard(
   cwd: string,
   repoFullName: string
 ): Promise<WizardResult> {
-  intro("OpenSWE Reconfiguration")
+  intro("openswe Reconfiguration")
 
   const prereq = await checkPrerequisites()
   if (!prereq.ok) {

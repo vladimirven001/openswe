@@ -1,7 +1,7 @@
 /**
  * Path utilities for workspace directories
  *
- * Provides consistent path resolution for OpenSWE project structure:
+ * Provides consistent path resolution for openswe project structure:
  * - .openswe/        - Project state directory
  * - .openswe/state.db - SQLite database
  * - .openswe/logs/   - Log files
@@ -14,7 +14,7 @@ import { join, resolve } from "path"
 // Directory Names (Constants)
 // ============================================================================
 
-/** Name of the OpenSWE project state directory */
+/** Name of the openswe project state directory */
 export const OPENSWE_DIR = ".openswe"
 
 /** Name of the worktrees directory */
@@ -34,7 +34,7 @@ export const LOGS_DIR = "logs"
  * Resolve the .openswe directory path for a project root
  * @param projectRoot - Absolute path to the project root
  */
-export function getOpenSWEDir(projectRoot: string): string {
+export function getOpensweDir(projectRoot: string): string {
   return join(projectRoot, OPENSWE_DIR)
 }
 

@@ -1,5 +1,5 @@
 /**
- * Component type definitions for OpenSWE TUI
+ * Component type definitions for openswe TUI
  */
 
 import type { Session, Phase, Status, ProjectState, TicketProviderType } from "../store"

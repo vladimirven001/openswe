@@ -1,7 +1,7 @@
 /**
  * Output parser for AI session markers
  *
- * Detects OpenSWE markers with support for provider-specific patterns.
+ * Detects openswe markers with support for provider-specific patterns.
  */
 
 import type { ParserPatterns } from "../providers/types"

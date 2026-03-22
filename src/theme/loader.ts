@@ -1,5 +1,5 @@
 /**
- * Theme loader for OpenSWE
+ * Theme loader for openswe
  *
  * Loads bundled themes and resolves color references
  */
@@ -29,6 +29,7 @@ import cursor from "./themes/cursor.json"
 import dracula from "./themes/dracula.json"
 import everforest from "./themes/everforest.json"
 import flexoki from "./themes/flexoki.json"
+import ghostty from "./themes/ghostty.json"
 import github from "./themes/github.json"
 import gruvbox from "./themes/gruvbox.json"
 import kanagawa from "./themes/kanagawa.json"
@@ -69,6 +70,7 @@ export const BUNDLED_THEMES: Record<string, ThemeJson> = {
   dracula: dracula as ThemeJson,
   everforest: everforest as ThemeJson,
   flexoki: flexoki as ThemeJson,
+  ghostty: ghostty as ThemeJson,
   github: github as ThemeJson,
   gruvbox: gruvbox as ThemeJson,
   kanagawa: kanagawa as ThemeJson,

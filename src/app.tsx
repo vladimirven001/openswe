@@ -1,7 +1,7 @@
 /**
  * Main TUI application entry point
  *
- * Provides startTUI function to launch the OpenSWE terminal interface.
+ * Provides startTUI function to launch the openswe terminal interface.
  */
 
 import { render } from "@opentui/solid"

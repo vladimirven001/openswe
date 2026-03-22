@@ -7,7 +7,7 @@
  */
 
 import { join } from "path"
-import { getOpenSWEDir } from "./paths"
+import { getOpensweDir } from "./paths"
 import type { TicketProviderType } from "../store/types"
 
 // ============================================================================
@@ -44,7 +44,7 @@ const VALID_TICKET_PROVIDERS: string[] = ["github", "jira"]
  * @param projectRoot - Absolute path to the project root
  */
 export function getProjectConfigPath(projectRoot: string): string {
-  return join(getOpenSWEDir(projectRoot), PROJECT_CONFIG_FILE)
+  return join(getOpensweDir(projectRoot), PROJECT_CONFIG_FILE)
 }
 
 // ============================================================================
@@ -71,14 +71,14 @@ export async function loadProjectConfig(projectRoot: string): Promise<ProjectCon
 
     // Basic validation
     if (!isValidProjectConfig(parsed)) {
-      console.warn(`[OpenSWE] Invalid project config at ${configPath}`)
+      console.warn(`[openswe] Invalid project config at ${configPath}`)
       return null
     }
 
     return parsed
   } catch (err) {
     if (err instanceof SyntaxError) {
-      console.warn(`[OpenSWE] Failed to parse project config at ${configPath}: Invalid JSON`)
+      console.warn(`[openswe] Failed to parse project config at ${configPath}: Invalid JSON`)
     }
     return null
   }

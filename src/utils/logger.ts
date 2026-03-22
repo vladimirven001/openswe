@@ -1,5 +1,5 @@
 /**
- * Logging utility for OpenSWE
+ * Logging utility for openswe
  */
 
 import type { LogLevel } from "../config/types"
