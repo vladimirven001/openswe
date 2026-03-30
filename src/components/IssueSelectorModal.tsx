@@ -6,7 +6,7 @@ import { fetchIssues, formatRelativeTime, type GitHubIssue, type IssueState } fr
 import { createSessionFromIssue, findNextAvailableWorktreeName } from "./session-utils"
 import { ScrollableText } from "./ScrollableText"
 import { useColors, borders } from "./theme"
-import { Footer } from "./Footer"
+import { Footer, FOOTER_HEIGHT } from "./Footer"
 import { logger } from "../utils/logger"
 
 // Bold attribute constant
@@ -15,9 +15,12 @@ const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", 
 const MODAL_WIDTH = 80
 const MODAL_HEIGHT = 24
 const HEADER_HEIGHT = 1
-const FOOTER_HEIGHT = 1
 const CONTENT_PADDING_TOP = 1
-const VISIBLE_ISSUE_COUNT = Math.max(1, MODAL_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - CONTENT_PADDING_TOP - 2)
+const BORDER_HEIGHT = 2
+const VISIBLE_ISSUE_COUNT = Math.max(
+  1,
+  MODAL_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - CONTENT_PADDING_TOP - BORDER_HEIGHT,
+)
 
 /** State filter options */
 const STATE_FILTERS: IssueState[] = ["open", "closed", "all"]
