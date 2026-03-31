@@ -32,11 +32,11 @@ export function Footer(props: FooterProps) {
       <box flexDirection="row" gap={2}>
         <For each={props.actions}>
           {(action) => (
-            <box flexDirection="row" gap={1}>
+            <box flexDirection="row">
               <text fg={colors().accent.primary} attributes={BOLD}>
                 {action.key}
               </text>
-              <text fg={colors().text.secondary}>{action.label}</text>
+              <text fg={colors().text.secondary}>{` ${action.label}`}</text>
             </box>
           )}
         </For>
