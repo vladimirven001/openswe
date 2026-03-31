@@ -171,6 +171,7 @@ export async function createSessionFromIssue(
 			issueNumber: issue.number,
 			issueTitle: issue.title,
 			issueBody: issue.body ?? undefined,
+			issueComments: issue.comments,
 			issueUrl: issue.url,
 			worktreePath,
 			branchName,

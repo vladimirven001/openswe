@@ -13,6 +13,7 @@ export interface FooterProps {
 }
 
 const BOLD = 1
+export const FOOTER_HEIGHT = 1
 
 export function Footer(props: FooterProps) {
   const colors = useColors()
@@ -20,7 +21,7 @@ export function Footer(props: FooterProps) {
     <box
       flexDirection="row"
       width="100%"
-      height={1}
+      height={FOOTER_HEIGHT}
       backgroundColor={props.bgColor || colors().bg.secondary}
       paddingLeft={1}
       paddingRight={1}

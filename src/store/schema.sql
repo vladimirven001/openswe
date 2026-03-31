@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   issue_number INTEGER,
   issue_title TEXT,
   issue_body TEXT,
+  issue_comments TEXT NOT NULL DEFAULT '[]',
   issue_url TEXT,
   worktree_path TEXT NOT NULL,
   branch_name TEXT NOT NULL,

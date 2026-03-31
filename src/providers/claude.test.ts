@@ -9,6 +9,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
 		issueNumber: 42,
 		issueTitle: "Test issue",
 		issueBody: "Test body",
+		issueComments: [],
 		issueUrl: "https://github.com/owner/repo/issues/42",
 		worktreePath: "/tmp/worktree",
 		branchName: "openswe/issue-42",

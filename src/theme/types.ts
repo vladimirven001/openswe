@@ -178,6 +178,7 @@ export type BundledThemeName =
   | "dracula"
   | "everforest"
   | "flexoki"
+  | "ghostty"
   | "github"
   | "gruvbox"
   | "kanagawa"

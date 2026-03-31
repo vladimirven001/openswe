@@ -13,6 +13,7 @@ export type {
   Phase,
   Status,
   AISessionData,
+  IssueComment,
   Session,
   CreateSessionInput,
   UpdateSessionInput,

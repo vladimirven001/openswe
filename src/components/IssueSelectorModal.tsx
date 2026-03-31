@@ -6,13 +6,21 @@ import { fetchIssues, formatRelativeTime, getIssue, type GitHubIssue, type Issue
 import { createSessionFromIssue, findNextAvailableWorktreeName } from "./session-utils"
 import { ScrollableText } from "./ScrollableText"
 import { useColors } from "./theme"
-import { Footer } from "./Footer"
+import { Footer, FOOTER_HEIGHT } from "./Footer"
 import { logger } from "../utils/logger"
 
 // Bold attribute constant
 const BOLD = 1
-const ITEMS_PER_PAGE = 7 // Increased slightly since rows are more compact
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+const MODAL_WIDTH = 80
+const MODAL_HEIGHT = 24
+const HEADER_HEIGHT = 1
+const CONTENT_PADDING_TOP = 1
+const BORDER_HEIGHT = 2
+const VISIBLE_ISSUE_COUNT = Math.max(
+  1,
+  MODAL_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - CONTENT_PADDING_TOP - BORDER_HEIGHT,
+)
 
 /** State filter options */
 const STATE_FILTERS: IssueState[] = ["open", "closed", "all"]
@@ -398,8 +406,8 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
         if (issueList.length > 0) {
           const nextIndex = Math.min(focusedIndex() + 1, issueList.length - 1)
           setFocusedIndex(nextIndex)
-          if (nextIndex >= scrollOffset() + ITEMS_PER_PAGE) {
-            setScrollOffset(nextIndex - ITEMS_PER_PAGE + 1)
+          if (nextIndex >= scrollOffset() + VISIBLE_ISSUE_COUNT) {
+            setScrollOffset(nextIndex - VISIBLE_ISSUE_COUNT + 1)
           }
         }
         break
@@ -466,8 +474,6 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   // Render
   // ============================================================================
 
-  const modalWidth = 80
-  const modalHeight = 25
   const selectedCount = () => selectedIssueNumbers().size
   const searchPlaceholder = "Type to search issues, labels, people"
   const currentPendingIssue = () => issues().find((issue) => issue.number === pendingIssueNumbers()[0])
@@ -485,8 +491,8 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
       {/* Modal container */}
       <box
         flexDirection="column"
-        width={modalWidth}
-        height={modalHeight}
+        width={MODAL_WIDTH}
+        height={MODAL_HEIGHT}
         backgroundColor={colors().bg.secondary}
         borderStyle="rounded"
         borderColor={colors().border.accent}
@@ -568,7 +574,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
                   flexGrow={1}
                   width="100%"
                 >
-                  <For each={issues().slice(scrollOffset(), scrollOffset() + ITEMS_PER_PAGE)}>
+                  <For each={issues().slice(scrollOffset(), scrollOffset() + VISIBLE_ISSUE_COUNT)}>
                     {(issue, i) => {
                       const index = () => scrollOffset() + i()
                       const isFocused = () => focusedIndex() === index()

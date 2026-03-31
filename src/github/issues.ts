@@ -28,6 +28,18 @@ export interface GitHubUser {
 }
 
 /** GitHub issue data */
+export interface GitHubIssueComment {
+  /** Comment author login if available */
+  author: string | null
+  /** Comment body */
+  body: string
+  /** ISO timestamp when comment was created */
+  createdAt: string
+  /** Comment URL on GitHub */
+  url: string
+}
+
+/** GitHub issue data */
 export interface GitHubIssue {
   /** Issue number */
   number: number
@@ -49,6 +61,8 @@ export interface GitHubIssue {
   createdAt: string
   /** ISO timestamp when issue was last updated */
   updatedAt: string
+  /** Issue comments */
+  comments: GitHubIssueComment[]
 }
 
 /** Options for fetching issues */
@@ -85,6 +99,34 @@ export interface FetchIssueResult {
   issue: GitHubIssue | null
   /** Error message if fetch failed */
   error?: string
+}
+
+interface RawGitHubComment {
+  author?: {
+    login?: string | null
+  } | null
+  body?: string | null
+  createdAt?: string | null
+  url?: string | null
+}
+
+interface RawGitHubUser {
+  login?: string | null
+  url?: string | null
+}
+
+interface RawGitHubIssue {
+  number: number
+  title: string
+  body: string | null
+  state: string
+  url: string
+  labels: Array<{ name: string; color: string }>
+  author?: RawGitHubUser | null
+  assignees?: RawGitHubUser[]
+  createdAt: string
+  updatedAt: string
+  comments?: RawGitHubComment[]
 }
 
 // ============================================================================
@@ -124,7 +166,7 @@ export async function fetchIssues(
       "--limit",
       String(limit),
       "--json",
-      "number,title,body,state,url,labels,author,assignees,createdAt,updatedAt",
+      "number,title,body,state,url,labels,author,assignees,createdAt,updatedAt,comments",
     ]
 
     // Add label filters
@@ -212,34 +254,9 @@ export async function fetchIssues(
 
     // Parse JSON response
     try {
-      const rawIssues = JSON.parse(stdout) as Array<{
-        number: number
-        title: string
-        body: string | null
-        state: string
-        url: string
-        labels: Array<{ name: string; color: string }>
-        author: { login: string; url: string } | null
-        assignees: Array<{ login: string; url: string }>
-        createdAt: string
-        updatedAt: string
-      }>
+      const rawIssues = JSON.parse(stdout) as RawGitHubIssue[]
 
-      const issues: GitHubIssue[] = rawIssues.map((raw) => ({
-        number: raw.number,
-        title: raw.title,
-        body: raw.body,
-        state: raw.state as "OPEN" | "CLOSED",
-        url: raw.url,
-        labels: raw.labels.map((l) => ({ name: l.name, color: l.color })),
-        author: raw.author ? { login: raw.author.login, url: raw.author.url } : null,
-        assignees: raw.assignees.map((assignee) => ({
-          login: assignee.login,
-          url: assignee.url,
-        })),
-        createdAt: raw.createdAt,
-        updatedAt: raw.updatedAt,
-      }))
+      const issues: GitHubIssue[] = rawIssues.map(mapRawIssue)
 
       return {
         success: true,
@@ -283,7 +300,7 @@ export async function getIssue(
         "--repo",
         ownerRepo,
         "--json",
-        "number,title,body,state,url,labels,author,assignees,createdAt,updatedAt",
+        "number,title,body,state,url,labels,author,assignees,createdAt,updatedAt,comments",
       ],
       {
         stdout: "pipe",
@@ -305,34 +322,9 @@ export async function getIssue(
 
     // Parse JSON response
     try {
-      const raw = JSON.parse(stdout) as {
-        number: number
-        title: string
-        body: string | null
-        state: string
-        url: string
-        labels: Array<{ name: string; color: string }>
-        author: { login: string; url: string } | null
-        assignees: Array<{ login: string; url: string }>
-        createdAt: string
-        updatedAt: string
-      }
+      const raw = JSON.parse(stdout) as RawGitHubIssue
 
-      const issue: GitHubIssue = {
-        number: raw.number,
-        title: raw.title,
-        body: raw.body,
-        state: raw.state as "OPEN" | "CLOSED",
-        url: raw.url,
-        labels: raw.labels.map((l) => ({ name: l.name, color: l.color })),
-        author: raw.author ? { login: raw.author.login, url: raw.author.url } : null,
-        assignees: raw.assignees.map((assignee) => ({
-          login: assignee.login,
-          url: assignee.url,
-        })),
-        createdAt: raw.createdAt,
-        updatedAt: raw.updatedAt,
-      }
+      const issue = mapRawIssue(raw)
 
       return {
         success: true,
@@ -357,6 +349,56 @@ export async function getIssue(
 // ============================================================================
 // Helpers
 // ============================================================================
+
+function mapRawComment(raw: RawGitHubComment): GitHubIssueComment {
+  return {
+    author: raw.author?.login ?? null,
+    body: raw.body ?? "",
+    createdAt: raw.createdAt ?? "",
+    url: raw.url ?? "",
+  }
+}
+
+function mapRawUser(raw: RawGitHubUser | null | undefined): GitHubUser | null {
+  if (!raw?.login || !raw.url) {
+    return null
+  }
+
+  return {
+    login: raw.login,
+    url: raw.url,
+  }
+}
+
+function mapRawIssue(raw: RawGitHubIssue): GitHubIssue {
+  return {
+    number: raw.number,
+    title: raw.title,
+    body: raw.body,
+    state: normalizeIssueState(raw.state),
+    url: raw.url,
+    labels: raw.labels.map((l) => ({ name: l.name, color: l.color })),
+    author: mapRawUser(raw.author),
+    assignees: (raw.assignees ?? []).flatMap((assignee) => {
+      const user = mapRawUser(assignee)
+      return user ? [user] : []
+    }),
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+    comments: (raw.comments ?? []).map(mapRawComment),
+  }
+}
+
+function normalizeIssueState(state: string): "OPEN" | "CLOSED" {
+  const normalized = state.trim().toUpperCase()
+
+  if (normalized === "OPEN") return "OPEN"
+  if (normalized === "CLOSED") return "CLOSED"
+
+  console.warn(`Unexpected GitHub issue state: ${state}. Falling back to OPEN.`)
+
+  return "OPEN"
+}
 
 /**
  * Parse gh CLI error messages into user-friendly strings
