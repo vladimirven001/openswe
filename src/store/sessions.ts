@@ -13,6 +13,7 @@ import type {
   Phase,
   Status,
   AISessionData,
+  IssueComment,
 } from "./types"
 import { isValidAISessionData } from "./types"
 import { logger } from "../utils/logger"
@@ -28,6 +29,7 @@ interface SessionRow {
   issue_number: number | null
   issue_title: string | null
   issue_body: string | null
+  issue_comments: string
   issue_url: string | null
   worktree_path: string
   branch_name: string
@@ -56,6 +58,7 @@ function rowToSession(row: SessionRow): Session {
     issueNumber: row.issue_number,
     issueTitle: row.issue_title,
     issueBody: row.issue_body,
+    issueComments: parseIssueComments(row.issue_comments),
     issueUrl: row.issue_url,
     worktreePath: row.worktree_path,
     branchName: row.branch_name,
@@ -69,6 +72,46 @@ function rowToSession(row: SessionRow): Session {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
+}
+
+function parseIssueComments(data: string | null): IssueComment[] {
+  if (!data) return []
+
+  try {
+    const parsed = JSON.parse(data) as unknown
+    if (!Array.isArray(parsed)) return []
+
+    return parsed.flatMap((comment) => {
+      if (typeof comment !== "object" || comment === null) return []
+
+      const author = "author" in comment ? comment.author : null
+      const body = "body" in comment ? comment.body : ""
+      const createdAt = "createdAt" in comment ? comment.createdAt : ""
+      const url = "url" in comment ? comment.url : ""
+
+      if (
+        (author !== null && typeof author !== "string") ||
+        typeof body !== "string" ||
+        typeof createdAt !== "string" ||
+        typeof url !== "string"
+      ) {
+        return []
+      }
+
+      return [{
+        author,
+        body,
+        createdAt,
+        url,
+      }]
+    })
+  } catch {
+    return []
+  }
+}
+
+function serializeIssueComments(comments: IssueComment[] | null | undefined): string {
+  return JSON.stringify(comments ?? [])
 }
 
 /**
@@ -194,6 +237,7 @@ export function createSession(data: CreateSessionInput): Session {
   const id = generateId()
   const now = nowISO()
   const aiSessionData = serializeAISessionData(data.aiSessionData ?? null)
+  const issueComments = serializeIssueComments(data.issueComments)
 
   logger.debug("Creating session", {
     id,
@@ -205,10 +249,10 @@ export function createSession(data: CreateSessionInput): Session {
   db.query(
     `INSERT INTO sessions (
       id, name, issue_number, issue_title, issue_body, issue_url,
-      worktree_path, branch_name, phase, status,
+      issue_comments, worktree_path, branch_name, phase, status,
       attention_reason, retry_count, tokens_used, pid, ai_session_data,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'queued', NULL, 0, 0, NULL, ?, ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'queued', NULL, 0, 0, NULL, ?, ?, ?)`
   ).run(
     id,
     data.name,
@@ -216,6 +260,7 @@ export function createSession(data: CreateSessionInput): Session {
     data.issueTitle ?? null,
     data.issueBody ?? null,
     data.issueUrl ?? null,
+    issueComments,
     data.worktreePath,
     data.branchName,
     aiSessionData,
@@ -231,6 +276,7 @@ export function createSession(data: CreateSessionInput): Session {
     issueNumber: data.issueNumber ?? null,
     issueTitle: data.issueTitle ?? null,
     issueBody: data.issueBody ?? null,
+    issueComments: data.issueComments ?? [],
     issueUrl: data.issueUrl ?? null,
     worktreePath: data.worktreePath,
     branchName: data.branchName,

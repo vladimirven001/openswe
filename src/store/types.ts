@@ -34,6 +34,13 @@ export interface AISessionData {
   [key: string]: unknown
 }
 
+export interface IssueComment {
+  author: string | null
+  body: string
+  createdAt: string
+  url: string
+}
+
 // ============================================================================
 // Session Types
 // ============================================================================
@@ -50,6 +57,8 @@ export interface Session {
   issueTitle: string | null
   /** GitHub issue body/description (cached) */
   issueBody: string | null
+  /** GitHub issue comments (cached) */
+  issueComments: IssueComment[]
   /** GitHub issue URL (for quick access) */
   issueUrl: string | null
   /** Absolute path to the git worktree for this session */
@@ -82,6 +91,7 @@ export interface CreateSessionInput {
   issueNumber?: number
   issueTitle?: string
   issueBody?: string
+  issueComments?: IssueComment[]
   issueUrl?: string
   worktreePath: string
   branchName: string
