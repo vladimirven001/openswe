@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { buildTmuxSendKeysCommands, runTmuxCommand } from "./tmux"
+import { buildTmuxSendKeysCommands, buildTmuxSessionSetupCommands, runTmuxCommand, runTmuxSetupCommand } from "./tmux"
 import type { ProcessInputChunk } from "./process-manager"
 
 describe("buildTmuxSendKeysCommands", () => {
@@ -89,5 +89,74 @@ describe("runTmuxCommand", () => {
 				stderr,
 			}))
 		).rejects.toThrow('tmux command failed (exit=1) command=["tmux","send-keys","-t","openswe-demo:0.0","hello"] stderr=can\'t find pane')
+	})
+
+	test("redacts literal send-keys payloads in failure output", async () => {
+		const stderr = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode("can't find pane"))
+				controller.close()
+			},
+		})
+
+		await expect(
+			runTmuxCommand(["tmux", "send-keys", "-t", "openswe-demo:0.0", "-l", "ship it"], () => ({
+				exited: Promise.resolve(1),
+				stderr,
+			}))
+		).rejects.toThrow('tmux command failed (exit=1) command=["tmux","send-keys","-t","openswe-demo:0.0","-l","<redacted len=7>"] stderr=can\'t find pane')
+	})
+})
+
+describe("buildTmuxSessionSetupCommands", () => {
+	test("uses the correct tmux option scopes", () => {
+		expect(buildTmuxSessionSetupCommands("openswe-demo")).toEqual([
+			{
+				option: "status",
+				scope: "session openswe-demo",
+				command: ["tmux", "set-option", "-t", "openswe-demo", "status", "off"],
+			},
+			{
+				option: "xterm-keys",
+				scope: "window openswe-demo:0",
+				command: ["tmux", "set-window-option", "-t", "openswe-demo:0", "xterm-keys", "on"],
+			},
+			{
+				option: "extended-keys",
+				scope: "server",
+				command: ["tmux", "set-option", "-s", "extended-keys", "on"],
+			},
+		])
+	})
+})
+
+describe("runTmuxSetupCommand", () => {
+	test("warns instead of throwing when a setup command fails", async () => {
+		const warnings: string[] = []
+		const stderr = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode("invalid option"))
+				controller.close()
+			},
+		})
+
+		await expect(
+			runTmuxSetupCommand(
+				{
+					option: "xterm-keys",
+					scope: "window openswe-demo:0",
+					command: ["tmux", "set-window-option", "-t", "openswe-demo:0", "xterm-keys", "on"],
+				},
+				() => ({
+					exited: Promise.resolve(1),
+					stderr,
+				}),
+				(message) => warnings.push(message),
+			)
+		).resolves.toBeUndefined()
+
+		expect(warnings).toEqual([
+			'tmux option "xterm-keys" setup failed for window openswe-demo:0: invalid option',
+		])
 	})
 })
