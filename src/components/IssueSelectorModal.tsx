@@ -629,7 +629,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
                           <box width={20} overflow="hidden">
                              <Show when={issue.labels.length > 0}>
                                 <text fg={mutedColor()}>
-                                  {formatLabels(issue.labels)}
+                                  {` ${formatLabels(issue.labels)}`}
                                 </text>
                               </Show>
                           </box>
