@@ -57,6 +57,14 @@ describe("codexProvider", () => {
 		})
 	})
 
+	describe("inputCapabilities", () => {
+		test("documents submit and newline keys", () => {
+			expect(codexProvider.inputCapabilities.submitKeys).toEqual(["Enter"])
+			expect(codexProvider.inputCapabilities.newlineKeys).toEqual(["Ctrl+J"])
+			expect(codexProvider.inputCapabilities.tmuxNotes?.length).toBeGreaterThan(0)
+		})
+	})
+
 	// ============================================================================
 	// Parser Patterns
 	// ============================================================================

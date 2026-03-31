@@ -28,6 +28,8 @@ export interface Provider {
 	readonly name: string
 	/** UI branding configuration */
 	readonly branding: ProviderBranding
+	/** Declarative input conventions for attached tmux sessions */
+	readonly inputCapabilities: ProviderInputCapabilities
 	/** Output parser patterns */
 	readonly parserPatterns: ParserPatterns
 
@@ -96,6 +98,26 @@ export interface ProviderSessionCaptureInput {
 
 export interface SpawnCommandOptions {
 	sessionTitle?: string
+}
+
+/**
+ * Supported human-readable key labels exposed in provider input metadata.
+ */
+export type ProviderKeyLabel =
+	| "Enter"
+	| "Shift+Enter"
+	| "Ctrl+Enter"
+	| "Alt+Enter"
+	| "Ctrl+J"
+	| "\\ + Enter"
+
+/**
+ * Declarative input conventions for an attached provider session.
+ */
+export interface ProviderInputCapabilities {
+	readonly submitKeys: readonly ProviderKeyLabel[]
+	readonly newlineKeys: readonly ProviderKeyLabel[]
+	readonly tmuxNotes?: readonly string[]
 }
 
 // ============================================================================

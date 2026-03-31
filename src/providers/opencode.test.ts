@@ -61,6 +61,18 @@ describe("openCodeProvider", () => {
 		})
 	})
 
+	describe("inputCapabilities", () => {
+		test("documents multiline key conventions", () => {
+			expect(openCodeProvider.inputCapabilities.submitKeys).toEqual(["Enter"])
+			expect(openCodeProvider.inputCapabilities.newlineKeys).toEqual([
+				"Shift+Enter",
+				"Ctrl+Enter",
+				"Alt+Enter",
+				"Ctrl+J",
+			])
+		})
+	})
+
 	// ============================================================================
 	// Parser Patterns
 	// ============================================================================

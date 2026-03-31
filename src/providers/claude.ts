@@ -4,7 +4,7 @@
  * Supports the Claude CLI (https://docs.anthropic.com/claude-code)
  */
 
-import type { Provider, ProviderBranding, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
+import type { Provider, ProviderBranding, ProviderInputCapabilities, ParserPatterns, SpawnCommand, SpawnCommandOptions } from "./types"
 import type { Session } from "../store"
 
 // ============================================================================
@@ -18,6 +18,14 @@ const branding: ProviderBranding = {
 	secondaryColor: "#a65f48",
 	logoText: "CC",
 	installationUrl: "https://docs.anthropic.com/claude-code",
+}
+
+const inputCapabilities: ProviderInputCapabilities = {
+	submitKeys: ["Enter"],
+	newlineKeys: ["\\ + Enter"],
+	tmuxNotes: [
+		"Modified Enter behavior depends on terminal configuration.",
+	],
 }
 
 // ============================================================================
@@ -39,6 +47,7 @@ export const claudeProvider: Provider = {
 	id: "claude",
 	name: "Claude Code",
 	branding,
+	inputCapabilities,
 	parserPatterns,
 
 	isValidSessionId(sessionId: string): boolean {

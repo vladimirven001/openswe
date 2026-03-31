@@ -26,6 +26,12 @@ function makeSession(overrides: Partial<Session> = {}): Session {
 }
 
 describe("claudeProvider", () => {
+	test("documents submit and newline keys", () => {
+		expect(claudeProvider.inputCapabilities.submitKeys).toEqual(["Enter"])
+		expect(claudeProvider.inputCapabilities.newlineKeys).toEqual(["\\ + Enter"])
+		expect(claudeProvider.inputCapabilities.tmuxNotes?.length).toBeGreaterThan(0)
+	})
+
 	test("validates UUID session IDs", () => {
 		expect(claudeProvider.isValidSessionId("8f57a6b2-6f1e-4e49-a2ad-9c00cfd5cb2f")).toBe(true)
 		expect(claudeProvider.isValidSessionId("openswe-8f57a6b2")).toBe(false)

@@ -8,9 +8,142 @@
  */
 
 import { existsSync } from "fs"
-import type { ProcessManager, ProcessSnapshot } from "./process-manager"
+import type { ProcessInputChunk, ProcessManager, ProcessSnapshot, ProcessSpecialKey } from "./process-manager"
 import { logger } from "../utils/logger"
 import { shellQuote } from "../utils/shell"
+
+const TMUX_SPECIAL_KEYS: Record<ProcessSpecialKey, string> = {
+  enter: "Enter",
+  backspace: "BSpace",
+  tab: "Tab",
+  escape: "Escape",
+  up: "Up",
+  down: "Down",
+  left: "Left",
+  right: "Right",
+}
+
+/**
+ * Build tmux send-keys command arguments from structured input chunks.
+ *
+ * @param target - tmux target (session:window.pane or target string)
+ * @param input - array of input chunks where chunk.type is "text" or a special key
+ * @returns array of tmux send-keys command argument arrays
+ */
+export function buildTmuxSendKeysCommands(target: string, input: ProcessInputChunk[]): string[][] {
+  const commands: string[][] = []
+
+  for (const chunk of input) {
+    if (chunk.type === "text") {
+      if (chunk.text.length === 0) continue
+
+      commands.push(["tmux", "send-keys", "-t", target, "-l", chunk.text])
+      continue
+    }
+
+    commands.push(["tmux", "send-keys", "-t", target, TMUX_SPECIAL_KEYS[chunk.key]])
+  }
+
+  return commands
+}
+
+type SpawnResult = {
+  exited: Promise<number>
+  stderr: ReadableStream<Uint8Array> | null
+}
+
+type SpawnProcess = (command: string[]) => SpawnResult
+
+/**
+ * Metadata for a best-effort tmux setup command.
+ */
+export interface TmuxSetupCommand {
+  option: string
+  scope: string
+  command: string[]
+}
+
+function sanitizeTmuxCommandForError(command: string[]): string[] {
+  const sanitized = [...command]
+  const literalIndex = sanitized.indexOf("-l")
+
+  if (literalIndex === -1 || literalIndex + 1 >= sanitized.length) {
+    return sanitized
+  }
+
+  const literalText = sanitized[literalIndex + 1] ?? ""
+  sanitized[literalIndex + 1] = `<redacted len=${literalText.length}>`
+
+  return sanitized
+}
+
+/**
+ * Build the tmux option commands needed to configure an OpenSWE session.
+ *
+ * @param sessionName - tmux session name
+ * @returns setup commands with warning context
+ */
+export function buildTmuxSessionSetupCommands(sessionName: string): TmuxSetupCommand[] {
+  return [
+    {
+      option: "status",
+      scope: `session ${sessionName}`,
+      command: ["tmux", "set-option", "-t", sessionName, "status", "off"],
+    },
+    {
+      option: "xterm-keys",
+      scope: `window ${sessionName}:0`,
+      command: ["tmux", "set-window-option", "-t", `${sessionName}:0`, "xterm-keys", "on"],
+    },
+    {
+      option: "extended-keys",
+      scope: "server",
+      command: ["tmux", "set-option", "-s", "extended-keys", "on"],
+    },
+  ]
+}
+
+/**
+ * Run a tmux setup command and warn instead of throwing when it fails.
+ *
+ * @param setupCommand - tmux setup command metadata
+ * @param spawnProcess - optional spawn helper for testing
+ * @param warn - optional warning sink for testing
+ * @returns resolves after the command finishes
+ */
+export async function runTmuxSetupCommand(
+  setupCommand: TmuxSetupCommand,
+  spawnProcess?: SpawnProcess,
+  warn: (message: string) => void = (message) => logger.warn(message)
+): Promise<void> {
+  const proc = spawnProcess ? spawnProcess(setupCommand.command) : Bun.spawn(setupCommand.command, { stderr: "pipe" })
+  const exitCode = await proc.exited
+
+  if (exitCode !== 0) {
+    const stderr = (await new Response(proc.stderr).text()).trim()
+    const stderrDetails = stderr ? `: ${stderr}` : ` (exit=${exitCode})`
+    warn(`tmux option "${setupCommand.option}" setup failed for ${setupCommand.scope}${stderrDetails}`)
+  }
+}
+
+/**
+ * Execute a tmux command and throw on failure.
+ *
+ * @param command - tmux command argument array to execute
+ * @param spawnProcess - optional spawn function for testing
+ * @returns resolves when the tmux command succeeds
+ * @throws Error when the command exits non-zero, including exit code and stderr
+ */
+export async function runTmuxCommand(command: string[], spawnProcess?: SpawnProcess): Promise<void> {
+  const proc = spawnProcess ? spawnProcess(command) : Bun.spawn(command, { stderr: "pipe" })
+  const exitCode = await proc.exited
+
+  if (exitCode !== 0) {
+    const stderr = (await new Response(proc.stderr).text()).trim()
+    const stderrDetails = stderr ? ` stderr=${stderr}` : ""
+    throw new Error(`tmux command failed (exit=${exitCode}) command=${JSON.stringify(sanitizeTmuxCommandForError(command))}${stderrDetails}`)
+  }
+}
 
 export class TmuxManager implements ProcessManager {
   private prefix = "openswe-"
@@ -127,8 +260,10 @@ export class TmuxManager implements ProcessManager {
       throw new Error(`Failed to start command in tmux session: ${err}`)
     }
 
-    // 2.5 Disable status bar to reclaim vertical space
-    await Bun.spawn(["tmux", "set-option", "-t", `${sessionName}:0`, "status", "off"], { stderr: "ignore" }).exited
+    // 2.5 Tune tmux key handling without failing the session if an option is unavailable
+    for (const setupCommand of buildTmuxSessionSetupCommands(sessionName)) {
+      await runTmuxSetupCommand(setupCommand)
+    }
 
     // 3. Get PID of the process inside tmux (approximate)
     // tmux list-panes -t session -F "#{pane_pid}"
@@ -188,11 +323,13 @@ export class TmuxManager implements ProcessManager {
     }
   }
 
-  async sendInput(id: string, data: string): Promise<void> {
-    const sessionName = this.getSessionName(id)
-    // send-keys is mainly for strings. For control chars it's trickier.
-    // simpler approach: just send keys.
-    await Bun.spawn(["tmux", "send-keys", "-t", `${sessionName}:0.0`, data]).exited
+  async sendInput(id: string, input: ProcessInputChunk[]): Promise<void> {
+    const target = `${this.getSessionName(id)}:0.0`
+    const commands = buildTmuxSendKeysCommands(target, input)
+
+    for (const command of commands) {
+      await runTmuxCommand(command)
+    }
   }
 
   async listActiveSessions(): Promise<string[]> {
