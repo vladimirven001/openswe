@@ -11,8 +11,9 @@ import type {
   ThemeMode,
   HexColor,
   RefName,
+  TransparentColor,
 } from "./types"
-import { isHexColor, isColorVariant } from "./types"
+import { isHexColor, isColorVariant, isTransparentColor } from "./types"
 
 // ============================================================================
 // Bundled Theme Imports
@@ -48,6 +49,7 @@ import rosepine from "./themes/rosepine.json"
 import solarized from "./themes/solarized.json"
 import synthwave84 from "./themes/synthwave84.json"
 import tokyonight from "./themes/tokyonight.json"
+import transparent from "./themes/transparent.json"
 import vercel from "./themes/vercel.json"
 import vesper from "./themes/vesper.json"
 import zenburn from "./themes/zenburn.json"
@@ -88,6 +90,7 @@ export const BUNDLED_THEMES: Record<string, ThemeJson> = {
   solarized: solarized as ThemeJson,
   synthwave84: synthwave84 as ThemeJson,
   tokyonight: tokyonight as ThemeJson,
+  transparent: transparent as ThemeJson,
   vercel: vercel as ThemeJson,
   vesper: vesper as ThemeJson,
   zenburn: zenburn as ThemeJson,
@@ -116,7 +119,7 @@ export function getBundledThemeNames(): string[] {
  */
 function resolveColor(
   color: ColorValue,
-  defs: Record<string, HexColor | RefName>,
+  defs: Record<string, HexColor | TransparentColor | RefName>,
   mode: ThemeMode,
   visited: Set<string> = new Set(),
 ): string {
@@ -127,6 +130,11 @@ function resolveColor(
 
   // If it's a hex color, return it directly
   if (isHexColor(color)) {
+    return color
+  }
+
+  // OpenTUI accepts transparent as a literal color string
+  if (isTransparentColor(color)) {
     return color
   }
 
@@ -188,6 +196,14 @@ export function resolveTheme(
   const border = resolveColor(t.border, defs, mode)
   const borderActive = resolveColor(t.borderActive, defs, mode)
   const borderSubtle = resolveColor(t.borderSubtle, defs, mode)
+  const selectedListItemText = resolve(
+    t.selectedListItemText,
+    background === "transparent" ? text : background,
+  )
+  const selectedListItemBackground = resolve(
+    t.selectedListItemBackground,
+    borderSubtle,
+  )
 
   return {
     // Core colors
@@ -206,6 +222,8 @@ export function resolveTheme(
     border,
     borderActive,
     borderSubtle,
+    selectedListItemText,
+    selectedListItemBackground,
 
     // Diff colors (with sensible defaults)
     diffAdded: resolve(t.diffAdded, success),

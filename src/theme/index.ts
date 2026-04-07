@@ -30,9 +30,10 @@ export type {
   ColorValue,
   ColorVariant,
   HexColor,
+  TransparentColor,
   RefName,
 } from "./types"
-export { isHexColor, isColorVariant } from "./types"
+export { isHexColor, isTransparentColor, isColorVariant } from "./types"
 
 // Loader
 export {

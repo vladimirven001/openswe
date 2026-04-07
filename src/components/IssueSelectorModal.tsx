@@ -516,7 +516,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
                         <box 
                           flexDirection="row" 
                           height={1} // Single line rows
-                          backgroundColor={isFocused() ? colors().bg.cardSelected : undefined}
+                          backgroundColor={isFocused() ? colors().selection.background : undefined}
                           paddingLeft={0}
                           paddingRight={1}
                           alignItems="center"

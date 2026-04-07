@@ -25,7 +25,7 @@ export function createColors(theme: ResolvedTheme) {
       primary: theme.background,
       secondary: theme.backgroundPanel,
       card: theme.backgroundElement,
-      cardSelected: theme.borderSubtle,
+      cardSelected: theme.selectedListItemBackground,
     },
 
     // Text colors
@@ -33,7 +33,13 @@ export function createColors(theme: ResolvedTheme) {
       primary: theme.text,
       secondary: theme.textMuted,
       muted: theme.borderSubtle,
-      inverse: theme.background,
+      inverse: theme.selectedListItemText,
+    },
+
+    // Selection/highlight colors
+    selection: {
+      background: theme.selectedListItemBackground,
+      foreground: theme.selectedListItemText,
     },
 
     // Status colors (semantic colors)

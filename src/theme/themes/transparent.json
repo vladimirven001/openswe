@@ -1,0 +1,155 @@
+{
+  "$schema": "https://opencode.ai/theme.json",
+  "defs": {
+    "darkPrimary": "#3b82f6",
+    "darkSecondary": "#a78bfa",
+    "darkAccent": "#f97316",
+    "darkError": "#f87171",
+    "darkWarning": "#fbbf24",
+    "darkSuccess": "#34d399",
+    "darkInfo": "#38bdf8",
+    "darkText": "#e5e7eb",
+    "darkTextMuted": "#9ca3af",
+    "darkBorder": "#64748b",
+    "darkBorderActive": "#93c5fd",
+    "darkBorderSubtle": "#334155",
+    "darkSelectionBackground": "#1d4ed8",
+    "darkSelectionText": "#ffffff",
+    "darkDiffAdded": "#86efac",
+    "darkDiffRemoved": "#fca5a5",
+    "darkDiffContext": "#94a3b8",
+    "darkDiffHunkHeader": "#c4b5fd",
+    "lightPrimary": "#2563eb",
+    "lightSecondary": "#7c3aed",
+    "lightAccent": "#c2410c",
+    "lightError": "#dc2626",
+    "lightWarning": "#a16207",
+    "lightSuccess": "#047857",
+    "lightInfo": "#0369a1",
+    "lightText": "#111827",
+    "lightTextMuted": "#4b5563",
+    "lightBorder": "#64748b",
+    "lightBorderActive": "#1d4ed8",
+    "lightBorderSubtle": "#cbd5e1",
+    "lightSelectionBackground": "#bfdbfe",
+    "lightSelectionText": "#111827",
+    "lightDiffAdded": "#047857",
+    "lightDiffRemoved": "#b91c1c",
+    "lightDiffContext": "#475569",
+    "lightDiffHunkHeader": "#6d28d9"
+  },
+  "theme": {
+    "primary": {
+      "dark": "darkPrimary",
+      "light": "lightPrimary"
+    },
+    "secondary": {
+      "dark": "darkSecondary",
+      "light": "lightSecondary"
+    },
+    "accent": {
+      "dark": "darkAccent",
+      "light": "lightAccent"
+    },
+    "error": {
+      "dark": "darkError",
+      "light": "lightError"
+    },
+    "warning": {
+      "dark": "darkWarning",
+      "light": "lightWarning"
+    },
+    "success": {
+      "dark": "darkSuccess",
+      "light": "lightSuccess"
+    },
+    "info": {
+      "dark": "darkInfo",
+      "light": "lightInfo"
+    },
+    "text": {
+      "dark": "darkText",
+      "light": "lightText"
+    },
+    "textMuted": {
+      "dark": "darkTextMuted",
+      "light": "lightTextMuted"
+    },
+    "background": {
+      "dark": "transparent",
+      "light": "transparent"
+    },
+    "backgroundPanel": {
+      "dark": "transparent",
+      "light": "transparent"
+    },
+    "backgroundElement": {
+      "dark": "transparent",
+      "light": "transparent"
+    },
+    "border": {
+      "dark": "darkBorder",
+      "light": "lightBorder"
+    },
+    "borderActive": {
+      "dark": "darkBorderActive",
+      "light": "lightBorderActive"
+    },
+    "borderSubtle": {
+      "dark": "darkBorderSubtle",
+      "light": "lightBorderSubtle"
+    },
+    "selectedListItemText": {
+      "dark": "darkSelectionText",
+      "light": "lightSelectionText"
+    },
+    "selectedListItemBackground": {
+      "dark": "darkSelectionBackground",
+      "light": "lightSelectionBackground"
+    },
+    "diffAdded": {
+      "dark": "darkDiffAdded",
+      "light": "lightDiffAdded"
+    },
+    "diffRemoved": {
+      "dark": "darkDiffRemoved",
+      "light": "lightDiffRemoved"
+    },
+    "diffContext": {
+      "dark": "darkDiffContext",
+      "light": "lightDiffContext"
+    },
+    "diffHunkHeader": {
+      "dark": "darkDiffHunkHeader",
+      "light": "lightDiffHunkHeader"
+    },
+    "diffHighlightAdded": {
+      "dark": "darkDiffAdded",
+      "light": "lightDiffAdded"
+    },
+    "diffHighlightRemoved": {
+      "dark": "darkDiffRemoved",
+      "light": "lightDiffRemoved"
+    },
+    "diffAddedBg": {
+      "dark": "transparent",
+      "light": "transparent"
+    },
+    "diffRemovedBg": {
+      "dark": "transparent",
+      "light": "transparent"
+    },
+    "diffContextBg": {
+      "dark": "transparent",
+      "light": "transparent"
+    },
+    "diffAddedLineNumberBg": {
+      "dark": "transparent",
+      "light": "transparent"
+    },
+    "diffRemovedLineNumberBg": {
+      "dark": "transparent",
+      "light": "transparent"
+    }
+  }
+}

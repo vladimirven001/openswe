@@ -34,7 +34,7 @@ export function SessionCard(props: SessionCardProps) {
       paddingTop={0}
       paddingBottom={0}
       backgroundColor={
-        props.isSelected ? colors().bg.cardSelected : colors().bg.card
+        props.isSelected ? colors().selection.background : colors().bg.card
       }
       borderStyle={props.isSelected ? "rounded" : "single"}
       borderColor={props.isSelected ? colors().accent.primary : colors().border.primary}

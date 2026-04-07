@@ -11,17 +11,20 @@
 /** Hex color string */
 export type HexColor = `#${string}`
 
+/** Transparent color literal supported by OpenTUI */
+export type TransparentColor = "transparent"
+
 /** Reference to a color defined in defs */
 export type RefName = string
 
 /** Dark/light mode variants */
 export interface ColorVariant {
-  dark: HexColor | RefName
-  light: HexColor | RefName
+  dark: HexColor | TransparentColor | RefName
+  light: HexColor | TransparentColor | RefName
 }
 
 /** A color value can be a hex, a reference, or a variant object */
-export type ColorValue = HexColor | RefName | ColorVariant
+export type ColorValue = HexColor | TransparentColor | RefName | ColorVariant
 
 // ============================================================================
 // Theme JSON Schema
@@ -48,6 +51,10 @@ export interface ThemeColors {
 
 /** Extended theme colors for diff views and syntax highlighting */
 export interface ThemeColorsExtended extends ThemeColors {
+  // Selection/highlight colors
+  selectedListItemText?: ColorValue
+  selectedListItemBackground?: ColorValue
+
   // Diff colors
   diffAdded?: ColorValue
   diffRemoved?: ColorValue
@@ -93,7 +100,7 @@ export interface ThemeColorsExtended extends ThemeColors {
 /** JSON theme file structure */
 export interface ThemeJson {
   $schema?: string
-  defs?: Record<string, HexColor | RefName>
+  defs?: Record<string, HexColor | TransparentColor | RefName>
   theme: ThemeColorsExtended
 }
 
@@ -119,6 +126,8 @@ export interface ResolvedTheme {
   border: string
   borderActive: string
   borderSubtle: string
+  selectedListItemText: string
+  selectedListItemBackground: string
 
   // Diff colors (with defaults)
   diffAdded: string
@@ -197,6 +206,7 @@ export type BundledThemeName =
   | "solarized"
   | "synthwave84"
   | "tokyonight"
+  | "transparent"
   | "vercel"
   | "vesper"
   | "zenburn"
@@ -210,6 +220,13 @@ export type BundledThemeName =
  */
 export function isHexColor(val: unknown): val is HexColor {
   return typeof val === "string" && val.startsWith("#")
+}
+
+/**
+ * Check if a value is a transparent color literal
+ */
+export function isTransparentColor(val: unknown): val is TransparentColor {
+  return val === "transparent"
 }
 
 /**

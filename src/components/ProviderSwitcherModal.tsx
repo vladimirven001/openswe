@@ -126,7 +126,7 @@ export function ProviderSwitcherModal(props: ProviderSwitcherModalProps) {
                   height={1}
                   flexDirection="row"
                   alignItems="center"
-                  backgroundColor={isFocused() ? colors().bg.cardSelected : undefined}
+                  backgroundColor={isFocused() ? colors().selection.background : undefined}
                 >
                   {/* Focus Indicator */}
                   <box width={2}>
