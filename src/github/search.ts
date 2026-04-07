@@ -19,6 +19,10 @@ const MULTI_FIELD_BONUS = 0.02
 
 /**
  * Apply local fuzzy filtering and ranking to GitHub issues.
+ *
+ * @param issues - GitHub issues to filter and rank.
+ * @param query - Search query used for fuzzy matching.
+ * @returns GitHub issues filtered and ranked by fuzzy relevance.
  */
 export function searchGitHubIssues(issues: GitHubIssue[], query: string): GitHubIssue[] {
   const trimmedQuery = query.trim()

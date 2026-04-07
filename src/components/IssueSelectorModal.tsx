@@ -77,7 +77,7 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
   // Data Loading
   // ============================================================================
 
-  const loadIssues = async (state: IssueState) => {
+  const loadIssues = async (state: IssueState, search: string = searchQuery().trim()) => {
     fetchAbortController?.abort()
     const abortController = new AbortController()
     fetchAbortController = abortController
@@ -90,10 +90,12 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     logger.debug("Loading issues", {
       repo: props.ownerRepo,
       state,
+      search,
     })
 
     const result = await fetchIssues(props.ownerRepo, {
       state,
+      search,
       limit: 500,
       signal: abortController.signal,
     })
@@ -122,9 +124,11 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
 
   createEffect(() => {
     const state = stateFilter()
+    const search = searchQuery().trim()
+    const timeoutMs = search.length > 0 ? 150 : 0
     const timeout = setTimeout(() => {
-      void loadIssues(state)
-    }, 0)
+      void loadIssues(state, search)
+    }, timeoutMs)
 
     onCleanup(() => {
       clearTimeout(timeout)
@@ -465,7 +469,6 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
           const char = extractChar(event)
           if (char === " ") {
             setSearchQuery((prev) => prev + char)
-            setError(null)
             return
           }
         }
@@ -495,7 +498,6 @@ export function IssueSelectorModal(props: IssueSelectorModalProps) {
     const char = extractChar(event)
     if (char) {
       setSearchQuery((prev) => prev + char)
-      setError(null)
     }
   })
 
