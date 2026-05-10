@@ -12,6 +12,12 @@ import { mkdir } from "fs/promises"
 import type { PartialConfig } from "./types"
 import { isValidBackend, isValidLogLevel, isBoolean, isNonEmptyString } from "./types"
 
+const VALID_THEME_MODES = ["dark", "light"] as const
+
+function isValidThemeMode(value: unknown): value is (typeof VALID_THEME_MODES)[number] {
+	return typeof value === "string" && VALID_THEME_MODES.includes(value as (typeof VALID_THEME_MODES)[number])
+}
+
 // ============================================================================
 // Path Utilities
 // ============================================================================
@@ -180,6 +186,22 @@ function validateParsedConfig(parsed: unknown): PartialConfig {
       warnInvalidConfig("advanced.logLevel", adv.logLevel, '"debug", "info", "warn", or "error"')
     }
   }
+
+	// Validate ui section
+	if (raw.ui && typeof raw.ui === "object") {
+		const ui = raw.ui as Record<string, unknown>
+		config.ui = {}
+
+		if (isNonEmptyString(ui.theme)) {
+			config.ui.theme = ui.theme
+		}
+
+		if (isValidThemeMode(ui.themeMode)) {
+			config.ui.themeMode = ui.themeMode
+		} else if (ui.themeMode !== undefined) {
+			warnInvalidConfig("ui.themeMode", ui.themeMode, '"dark" or "light"')
+		}
+	}
 
   return config
 }
