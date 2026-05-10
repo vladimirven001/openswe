@@ -19,6 +19,14 @@ export interface IssueLabel {
   color: string
 }
 
+/** GitHub user information */
+export interface GitHubUser {
+  /** GitHub login */
+  login: string
+  /** Profile URL */
+  url: string
+}
+
 /** GitHub issue data */
 export interface GitHubIssueComment {
   /** Comment author login if available */
@@ -45,6 +53,10 @@ export interface GitHubIssue {
   url: string
   /** Labels attached to the issue */
   labels: IssueLabel[]
+  /** Issue author */
+  author: GitHubUser | null
+  /** Assigned users */
+  assignees: GitHubUser[]
   /** ISO timestamp when issue was created */
   createdAt: string
   /** ISO timestamp when issue was last updated */
@@ -59,8 +71,12 @@ export interface FetchIssuesOptions {
   state?: IssueState
   /** Filter by labels (AND logic) */
   labels?: string[]
+  /** Search query */
+  search?: string
   /** Maximum number of issues to fetch (default: 50) */
   limit?: number
+  /** Optional abort signal to cancel in-flight gh process */
+  signal?: AbortSignal
 }
 
 /** Result of fetching issues */
@@ -71,6 +87,8 @@ export interface FetchIssuesResult {
   issues: GitHubIssue[]
   /** Error message if fetch failed */
   error?: string
+  /** Whether request was cancelled */
+  cancelled?: boolean
 }
 
 /** Result of fetching a single issue */
@@ -92,6 +110,11 @@ interface RawGitHubComment {
   url?: string | null
 }
 
+interface RawGitHubUser {
+  login?: string | null
+  url?: string | null
+}
+
 interface RawGitHubIssue {
   number: number
   title: string
@@ -99,6 +122,8 @@ interface RawGitHubIssue {
   state: string
   url: string
   labels: Array<{ name: string; color: string }>
+  author?: RawGitHubUser | null
+  assignees?: RawGitHubUser[]
   createdAt: string
   updatedAt: string
   comments?: RawGitHubComment[]
@@ -119,14 +144,14 @@ const DEFAULT_TIMEOUT_MS = 30000
  * Fetch issues from a GitHub repository
  *
  * @param ownerRepo - Repository in "owner/repo" format
- * @param options - Fetch options (state, labels, limit)
+ * @param options - Fetch options (state, labels, search, limit, signal)
  * @returns Result with fetched issues or error
  */
 export async function fetchIssues(
   ownerRepo: string,
   options?: FetchIssuesOptions
 ): Promise<FetchIssuesResult> {
-  const { state = "open", labels = [], limit = 50 } = options ?? {}
+  const { state = "open", labels = [], search, limit = 50, signal } = options ?? {}
 
   try {
     // Build command arguments
@@ -141,7 +166,7 @@ export async function fetchIssues(
       "--limit",
       String(limit),
       "--json",
-      "number,title,body,state,url,labels,createdAt,updatedAt,comments",
+      "number,title,body,state,url,labels,author,assignees,createdAt,updatedAt,comments",
     ]
 
     // Add label filters
@@ -149,17 +174,57 @@ export async function fetchIssues(
       args.push("--label", label)
     }
 
+    if (search && search.trim().length > 0) {
+      args.push("--search", search.trim())
+    }
+
+    if (signal?.aborted) {
+      return {
+        success: false,
+        issues: [],
+        cancelled: true,
+      }
+    }
+
     const proc = Bun.spawn(args, {
       stdout: "pipe",
       stderr: "pipe",
     })
 
+    const abortPromise = new Promise<"aborted">((resolve) => {
+      signal?.addEventListener(
+        "abort",
+        () => {
+          try {
+            proc.kill()
+          } catch {
+            // Ignore kill errors
+          }
+          resolve("aborted")
+        },
+        { once: true }
+      )
+    })
+
     // Race between process completion and timeout
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined
     const timeoutPromise = new Promise<"timeout">((resolve) =>
-      setTimeout(() => resolve("timeout"), DEFAULT_TIMEOUT_MS)
+      (timeoutHandle = setTimeout(() => resolve("timeout"), DEFAULT_TIMEOUT_MS))
     )
 
-    const raceResult = await Promise.race([proc.exited, timeoutPromise])
+    const raceResult = await Promise.race([proc.exited, timeoutPromise, abortPromise])
+
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle)
+    }
+
+    if (raceResult === "aborted") {
+      return {
+        success: false,
+        issues: [],
+        cancelled: true,
+      }
+    }
 
     if (raceResult === "timeout") {
       // Kill the process if it's still running
@@ -235,7 +300,7 @@ export async function getIssue(
         "--repo",
         ownerRepo,
         "--json",
-        "number,title,body,state,url,labels,createdAt,updatedAt,comments",
+        "number,title,body,state,url,labels,author,assignees,createdAt,updatedAt,comments",
       ],
       {
         stdout: "pipe",
@@ -294,6 +359,17 @@ function mapRawComment(raw: RawGitHubComment): GitHubIssueComment {
   }
 }
 
+function mapRawUser(raw: RawGitHubUser | null | undefined): GitHubUser | null {
+  if (!raw?.login || !raw.url) {
+    return null
+  }
+
+  return {
+    login: raw.login,
+    url: raw.url,
+  }
+}
+
 function mapRawIssue(raw: RawGitHubIssue): GitHubIssue {
   return {
     number: raw.number,
@@ -302,6 +378,11 @@ function mapRawIssue(raw: RawGitHubIssue): GitHubIssue {
     state: normalizeIssueState(raw.state),
     url: raw.url,
     labels: raw.labels.map((l) => ({ name: l.name, color: l.color })),
+    author: mapRawUser(raw.author),
+    assignees: (raw.assignees ?? []).flatMap((assignee) => {
+      const user = mapRawUser(assignee)
+      return user ? [user] : []
+    }),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
     comments: (raw.comments ?? []).map(mapRawComment),
